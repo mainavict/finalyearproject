@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:16-alpine # Uses a lightweight, official Postgres image
+    container_name: finalyearproject_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: supersecretpassword # Match this in your appsettings.json
+      POSTGRES_DB: finalyearproject_db       # The name of your database
+    ports:
+      - "5434:5432" # Maps your machine's port 5432 to the container's port 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Persists your data so it isn't lost on restart
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

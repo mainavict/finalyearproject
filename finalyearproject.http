@@ -1,0 +1,6 @@
+@finalyearproject_HostAddress = http://localhost:5228
+
+GET {{finalyearproject_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
