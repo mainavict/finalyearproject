@@ -1,85 +1,53 @@
 using Microsoft.AspNetCore.Mvc;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.DTOs;
+using finalyearproject.Wrappers;
 
 namespace finalyearproject.Controllers;
 [Route("api/[controller]")]
 [ApiController]
-public class UserControllers:ControllerBase
+public class UsersController : ControllerBase
 {
     private readonly IUsers _userService;
-    
-    public UserControllers(IUsers userService)
+
+    public UsersController(IUsers userService)
     {
         _userService = userService;
     }
-    
-    
+
     [HttpPost]
-    
-    public  async  Task <IActionResult> CreateUser([FromBody] CreateUserDTO dto)
+    public async Task<ApiResponse<ReadUserDTOs>> CreateUser([FromBody] CreateUserDTO dto)
     {
         var result = await _userService.CreateUserAsync(dto);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
+        return result;
     }
 
-
     [HttpGet]
-    public async Task<IActionResult> GetUsers()
+    public async Task<ApiResponse<IEnumerable<ReadUserDTOs>>> GetUsers()
     {
         var result = await _userService.GetAllAsync();
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
-        
+        return result;
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetUser(Guid id)
+    public async Task<ApiResponse<ReadUserDTOs>> GetUser(Guid id)
     {
         var result = await _userService.GetByIdAsync(id);
-
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
-        
+        return result;
     }
-    
-    [HttpPut]
-    
-    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
+
+    [HttpPut("{id}")]
+    public async Task<ApiResponse<ReadUserDTOs>> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
     {
         var result = await _userService.UpdateUserAsync(id, dto);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-        }
-        return Ok(result);
+        return result;
     }
 
-    [HttpDelete("{userid}/Deleteuser")]
-
-    public async Task<IActionResult> DeleteUser(Guid userid)
+    [HttpDelete("{id}")]
+    public async Task<ApiResponse<bool>> DeleteUser(Guid id)
     {
-        var result = await _userService.DeleteUserAsync(userid);
-        if (!result.Success)
-        {
-            return BadRequest(result);
-
-
-        }
-
-        return Ok(result);
-
+        var result = await _userService.DeleteUserAsync(id);
+        return result;
     }
-
-
 }
+

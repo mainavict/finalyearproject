@@ -40,9 +40,13 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi(); 
     
     // 3. Maps the Scalar UI (which reads the endpoint above)
-    app.MapScalarApiReference(); 
-}
-
+      app.MapScalarApiReference(options => 
+        {
+            options.WithTitle("finalyearproject")
+                .WithTheme(ScalarTheme.Moon) // Try 'Purple', 'Solarized', or 'DeepSpace'
+                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+        });
+    }
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthorization();

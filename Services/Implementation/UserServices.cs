@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using finalyearproject.Data;
 using finalyearproject.Wrappers;
 using BCrypt.Net;
-
+using finalyearproject.Models;
 
 
 namespace finalyearproject.Services.Implementation;
@@ -108,7 +108,7 @@ public class UserServices:IUsers
     public async Task<ApiResponse<ReadUserDTOs>> UpdateUserAsync(Guid id, UpdateUserDto dto)
     {
         var user = await _context.Users.FindAsync(id);
-        if (user == null) {
+        if (user == null || user.IsDeleted) {
             _logger.LogWarning("User with id {Id} not found for update", id);
             return ApiResponse<ReadUserDTOs>.FailureResponse("User not found",404);
         }
@@ -137,14 +137,18 @@ public class UserServices:IUsers
     public async Task<ApiResponse<bool>> DeleteUserAsync(Guid id)
     {
         var  user  = await  _context.Users.FindAsync(id);
+        
+        
         _logger.LogInformation("Attempt to delete user with id: {Id}", id);
-        if (user == null) {
+        if (user == null || user.IsDeleted) {
             _logger.LogWarning("User with id {Id} not found for deletion", id);
             return ApiResponse<bool>.FailureResponse("User not found",404);
         }
         
+        
         _logger.LogInformation("Soft deleting user with id: {UserId}", id);
         user.IsDeleted = true;
+        user.IsActive=false;
         await _context.SaveChangesAsync();
         return ApiResponse<bool>.SuccessResponse(true,"user deleted successfully",200);
     }
