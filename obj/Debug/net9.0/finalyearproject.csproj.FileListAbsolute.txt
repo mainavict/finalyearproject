@@ -119,3 +119,4 @@ C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\refint\finalyearpro
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.pdb
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.genruntimeconfig.cache
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\ref\finalyearproject.dll
+C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.sourcelink.json
