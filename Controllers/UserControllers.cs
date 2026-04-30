@@ -26,8 +26,60 @@ public class UserControllers:ControllerBase
         }
         return Ok(result);
     }
+
+
+    [HttpGet]
+    public async Task<IActionResult> GetUsers()
+    {
+        var result = await _userService.GetAllAsync();
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+        
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetUser(Guid id)
+    {
+        var result = await _userService.GetByIdAsync(id);
+
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+        
+    }
     
+    [HttpPut]
     
-    
-    
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserDto dto)
+    {
+        var result = await _userService.UpdateUserAsync(id, dto);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+        }
+        return Ok(result);
+    }
+
+    [HttpDelete("{userid}/Deleteuser")]
+
+    public async Task<IActionResult> DeleteUser(Guid userid)
+    {
+        var result = await _userService.DeleteUserAsync(userid);
+        if (!result.Success)
+        {
+            return BadRequest(result);
+
+
+        }
+
+        return Ok(result);
+
+    }
+
+
 }
