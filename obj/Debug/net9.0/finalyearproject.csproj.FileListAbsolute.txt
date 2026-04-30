@@ -120,3 +120,4 @@ C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.pd
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.genruntimeconfig.cache
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\ref\finalyearproject.dll
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.sourcelink.json
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\BCrypt.Net-Next.dll

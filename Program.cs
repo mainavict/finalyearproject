@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using finalyearproject.Data;
 using Scalar.AspNetCore;
+using finalyearproject.Services.Interfaces;
+using finalyearproject.Services.Implementation;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,11 +10,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+
+
 // 1. Registers the .NET 9 OpenAPI generator
 builder.Services.AddOpenApi(); 
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+builder.Services.AddScoped<IUsers, UserServices>();
 
 builder.Services.AddCors(options =>
 {

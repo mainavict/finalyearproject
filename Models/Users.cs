@@ -12,7 +12,7 @@ public Guid UserId { get; set; } =  Guid.NewGuid();
     public string Email { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; }
-    public  string HashPassword = String.Empty;
+    public  string PasswordHash = String.Empty;
     public bool IsDeleted { get; set; } = false;
 
 }
