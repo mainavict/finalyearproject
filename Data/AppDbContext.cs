@@ -16,20 +16,17 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
-
-        b.Entity<Organization>()
-            .Property(o => o.Plan)
-            .HasConversion<int>();
-
-
+        
+        b.Entity<EmailOtp>()
+            .Property(o => o.Purpose)
+            .HasConversion<string>();
+        
+        b.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
         b.Entity<Meeting>()
             .HasQueryFilter(m => !m.IsDeleted);
-
-        b.Entity<Meeting>()
-            .HasIndex(m => m.OrgId);
-
-        b.Entity<Meeting>()
-            .HasIndex(m => new { m.OrgId, m.Status });
+        
 
         b.Entity<Meeting>()
             .Property(m => m.Status)

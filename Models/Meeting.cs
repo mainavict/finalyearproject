@@ -11,7 +11,7 @@ public enum MeetingStatus
 public class Meeting
 {
     public Guid Id { get; set; }
-    public Guid OrgId { get; set; }
+  
     public Guid CreatedBy { get; set; }
     public Guid? ApprovedBy { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -26,8 +26,7 @@ public class Meeting
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; } = false;
-// Navigation
-    public Organization Organization { get; set; } = null!;
+
     public User Creator { get; set; } = null!;
     public Transcript? Transcript { get; set; }
     public Minutes? Minutes { get; set; }
