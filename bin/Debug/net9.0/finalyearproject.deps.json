@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v9.0": {
       "finalyearproject/1.0.0": {
         "dependencies": {
+          "AWSSDK.S3": "4.0.22.1",
           "BCrypt.Net-Next": "4.1.0",
           "Microsoft.AspNetCore.OpenApi": "9.0.15",
           "Microsoft.EntityFrameworkCore.Design": "9.0.0",
@@ -16,6 +17,25 @@
         },
         "runtime": {
           "finalyearproject.dll": {}
+        }
+      },
+      "AWSSDK.Core/4.0.4": {
+        "runtime": {
+          "lib/net8.0/AWSSDK.Core.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.4.0"
+          }
+        }
+      },
+      "AWSSDK.S3/4.0.22.1": {
+        "dependencies": {
+          "AWSSDK.Core": "4.0.4"
+        },
+        "runtime": {
+          "lib/net8.0/AWSSDK.S3.dll": {
+            "assemblyVersion": "4.0.0.0",
+            "fileVersion": "4.0.22.1"
+          }
         }
       },
       "BCrypt.Net-Next/4.1.0": {
@@ -590,6 +610,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "AWSSDK.Core/4.0.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-RjBk1WDrOCpsSRGn6j2lYhgiyYnXEhMctwJevNnIPIIGpgj49ifbU6FmG1Dk+1M/VSuqeTQ1WVsssziTty7b2w==",
+      "path": "awssdk.core/4.0.4",
+      "hashPath": "awssdk.core.4.0.4.nupkg.sha512"
+    },
+    "AWSSDK.S3/4.0.22.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-DvD6hSsrr8Z5j+ER6msGOHFQZsgyhNWrLbO5y+1YT/VRn6uL4BFhI2YNofRsfVPaA85vOj7q/sLuexSsCXwJZg==",
+      "path": "awssdk.s3/4.0.22.1",
+      "hashPath": "awssdk.s3.4.0.22.1.nupkg.sha512"
     },
     "BCrypt.Net-Next/4.1.0": {
       "type": "package",

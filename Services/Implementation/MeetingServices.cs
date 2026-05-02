@@ -89,32 +89,165 @@ public class MeetingServices:Imeeting
             CreatedAt = meeting.CreatedAt
         };
         
+        _logger.LogInformation("Meeting with id {MeetingId} retrieved successfully", meetingId);
         return ApiResponse<ResponseMeetingDto>.SuccessResponse(response,"Meeting retrieved successfully",200);
     }
 
-    public Task<IEnumerable<ApiResponse<ResponseMeetingDto>>> GetMeetingsByUserIdAsync(Guid userId)
+    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMeetingsByUserIdAsync(Guid userId)
     {
-        throw new NotImplementedException();
+        var user  = await _context.Users.FindAsync(userId);
+        if (user == null)
+        {
+            _logger.LogWarning("User with id {UserId} not found", userId);
+            return ApiResponse<IEnumerable<ResponseMeetingDto>>.FailureResponse("User not found", 404);
+        }
+
+        var meetings = await _context.Meetings.Where(m => m.CreatedId == userId).ToListAsync();
+        
+        var  response = meetings.Select(meeting => new ResponseMeetingDto()
+        {
+            Id = meeting.Id,
+            Title = meeting.Title,
+            Description = meeting.Description,
+            Status = meeting.Status.ToString(),
+            CreatedBy = meeting.CreatedId,
+            ApprovedBy = meeting.ApprovedBy,
+            AudioUrl = meeting.AudioUrl,
+            ScheduledAt = meeting.ScheduledAt,
+            EndedAt = meeting.EndedAt,
+            ApprovedAt = meeting.ApprovedAt,
+            AudioDurationSecs = meeting.AudioDurationSecs,
+            CreatedAt = meeting.CreatedAt
+        });
+        
+        
+        return ApiResponse<IEnumerable<ResponseMeetingDto>>.SuccessResponse(response ,"Meetings retrieved successfully",200);
+        
     }
 
-    public Task<IEnumerable<ApiResponse<ResponseMeetingDto>>> GetAllMeetingsAsync()
+    public async  Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetAllMeetingsAsync()
     {
-        throw new NotImplementedException();
+        var  meetings = await _context.Meetings.ToListAsync();
+        
+        var  response =  meetings.Select(meeting => new ResponseMeetingDto()
+        {
+            Id = meeting.Id,
+            Title = meeting.Title,
+            Description = meeting.Description,
+            Status = meeting.Status.ToString(),
+            CreatedBy = meeting.CreatedId,
+            ApprovedBy = meeting.ApprovedBy,
+            AudioUrl = meeting.AudioUrl,
+            ScheduledAt = meeting.ScheduledAt,
+            EndedAt = meeting.EndedAt,
+            ApprovedAt = meeting.ApprovedAt,
+            AudioDurationSecs = meeting.AudioDurationSecs,
+            CreatedAt = meeting.CreatedAt
+        });
+        
+        return ApiResponse<IEnumerable<ResponseMeetingDto>>.SuccessResponse(response,"All meetings retrieved successfully",200);
     }
 
-    public Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingAsync(Guid meetingId, UpdateMeetingDto updateDto, Guid userId)
+    public async  Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingAsync(Guid meetingId, UpdateMeetingDto updateDto, Guid userId)
     {
-        throw new NotImplementedException();
+       var  meeting = await _context.Meetings.FindAsync(meetingId);
+       if (meeting == null)
+       {
+           _logger.LogWarning("Meeting with id {MeetingId} not found", meetingId);
+           return ApiResponse<ResponseMeetingDto>.FailureResponse("Meeting not found", 404);
+       }
+       
+       var    user = await _context.Users.FindAsync(userId);
+       if (user == null)
+       {
+           _logger.LogWarning("User with id {UserId} not found", userId);
+           return ApiResponse<ResponseMeetingDto>.FailureResponse("User not found", 404);
+       }
+
+       if (!string.IsNullOrEmpty(updateDto.Title))
+       {
+           meeting.Title = updateDto.Title;
+       }
+
+       if (!string.IsNullOrEmpty(updateDto.Description))
+       {
+           meeting.Description = updateDto.Description;
+       }
+       
+       if (!updateDto.ScheduledAt.HasValue)
+       {
+           meeting.ScheduledAt = updateDto.ScheduledAt;
+       }
+       
+       await _context.SaveChangesAsync();
+       
+       var  response = new ResponseMeetingDto()
+       {
+           Id = meeting.Id,
+           Title = meeting.Title,
+           Description = meeting.Description,
+           Status = meeting.Status.ToString(),
+           CreatedBy = meeting.CreatedId,
+           ApprovedBy = meeting.ApprovedBy,
+           AudioUrl = meeting.AudioUrl,
+           ScheduledAt = meeting.ScheduledAt,
+           EndedAt = meeting.EndedAt,
+           ApprovedAt = meeting.ApprovedAt,
+           AudioDurationSecs = meeting.AudioDurationSecs,
+           CreatedAt = meeting.CreatedAt
+        };  
+       
+       
+       return ApiResponse<ResponseMeetingDto>.SuccessResponse(response,"Meeting updated successfully",200);
+       }
+       
+    
+ 
+    public async Task<ApiResponse<bool>> DeleteMeetingAsync(Guid meetingId, Guid userId)
+    {
+        var  meeting  = await _context.Meetings.FindAsync(meetingId);
+
+        if (meeting == null)
+        {
+            _logger.LogWarning("Meeting with id {MeetingId} not found", meetingId);
+            return ApiResponse<bool>.FailureResponse("Meeting not found", 404);
+        }
+        
+        _context.Meetings.Remove(meeting);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Meeting with id {MeetingId} deleted successfully", meetingId);
+        return ApiResponse<bool>.SuccessResponse(true,"Meeting deleted successfully",200);
+        
     }
 
-    public Task<ApiResponse<bool>> DeleteMeetingAsync(Guid meetingId, Guid userId)
+    public async  Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingStatusAsync(Guid meetingId, UpdateMeetingStatusDto statusDto, Guid userId)
     {
-        throw new NotImplementedException();
-    }
-
-    public Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingStatusAsync(Guid meetingId, UpdateMeetingStatusDto statusDto, Guid userId)
-    {
-        throw new NotImplementedException();
+       var meeting =  await  _context.Meetings.FindAsync(meetingId);
+       if (meeting == null)
+       {
+           _logger.LogWarning("Meeting with id {MeetingId} not found", meetingId);
+           return ApiResponse<ResponseMeetingDto>.FailureResponse("Meeting not found", 404);
+       }
+       
+       meeting.Status = Enum.TryParse<Models.MeetingStatus>(statusDto.Status, true, out var newStatus) ? newStatus : meeting.Status;
+       await _context.SaveChangesAsync();
+       
+       
+       return ApiResponse<ResponseMeetingDto>.SuccessResponse(new ResponseMeetingDto()
+       {
+           Id = meeting.Id,
+           Title = meeting.Title,
+           Description = meeting.Description,
+           Status = meeting.Status.ToString(),
+           CreatedBy = meeting.CreatedId,
+           ApprovedBy = meeting.ApprovedBy,
+           AudioUrl = meeting.AudioUrl,
+           ScheduledAt = meeting.ScheduledAt,
+           EndedAt = meeting.EndedAt,
+           ApprovedAt = meeting.ApprovedAt,
+           AudioDurationSecs = meeting.AudioDurationSecs,
+           CreatedAt = meeting.CreatedAt
+       },"Meeting status updated successfully",200);
     }
     
 }

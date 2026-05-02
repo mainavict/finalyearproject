@@ -12,11 +12,17 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public  DbSet<Meeting> Meetings { get; set; }
     
+    public DbSet<AudioFile> AudioFiles { get; set; }
+    
     
     
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        
+        b.Entity<AudioFile>()
+            .Property(a=>a.Status)
+            .HasConversion<string>();
 
         b.Entity<Meeting>()
             .Property(m => m.Status)

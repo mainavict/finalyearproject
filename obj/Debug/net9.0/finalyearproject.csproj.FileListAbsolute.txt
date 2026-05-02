@@ -121,3 +121,6 @@ C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.ge
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\ref\finalyearproject.dll
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.sourcelink.json
 C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\BCrypt.Net-Next.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\AWSSDK.Core.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\AWSSDK.S3.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\finalyearproject.staticwebassets.runtime.json
