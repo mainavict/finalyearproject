@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace finalyearproject.Models;
 
 public enum MeetingStatus
@@ -10,14 +13,17 @@ public enum MeetingStatus
 }
 public class Meeting
 {
-    public Guid Id { get; set; }
-  
-    public Guid CreatedBy { get; set; }
+    [Key]
+    public Guid Id { get; set; } =   Guid.NewGuid();
+    [ForeignKey("Creator")]
+    public Guid CreatedId { get; set; }
     public Guid? ApprovedBy { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public MeetingStatus Status { get; set; } = MeetingStatus.Created;
-    public string? AudioPath { get; set; }
+    
+    [MaxLength(4000)]
+    public string? AudioUrl { get; set; } = String.Empty;
     public int? AudioDurationSecs{ get; set; }
     public string? AudioMimeType { get; set; }
     public DateTime? ScheduledAt { get; set; }

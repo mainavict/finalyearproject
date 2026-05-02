@@ -37,3 +37,8 @@ public class UpdateUserDto
 
     public string? Email { get; set; }
 }
+
+public class UpdateMeetingAudioDto
+{
+    public string AudioUrl { get; set; } = string.Empty;
+}

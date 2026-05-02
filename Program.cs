@@ -20,6 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 
 builder.Services.AddScoped<IUsers, UserServices>();
+builder.Services.AddScoped<Imeeting, MeetingServices>();
 
 builder.Services.AddCors(options =>
 {

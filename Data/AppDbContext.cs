@@ -10,12 +10,17 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
+    public  DbSet<Meeting> Meetings { get; set; }
     
     
     
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+
+        b.Entity<Meeting>()
+            .Property(m => m.Status)
+            .HasConversion<string>();
         
         b.Entity<EmailOtp>()
             .Property(o => o.Purpose)

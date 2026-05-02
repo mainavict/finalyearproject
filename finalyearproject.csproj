@@ -17,4 +17,8 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.13.17" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Aimodels\" />
+  </ItemGroup>
+
 </Project>

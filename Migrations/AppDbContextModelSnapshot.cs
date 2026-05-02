@@ -121,16 +121,14 @@ namespace finalyearproject.Migrations
                     b.Property<string>("AudioMimeType")
                         .HasColumnType("text");
 
-                    b.Property<string>("AudioPath")
-                        .HasColumnType("text");
+                    b.Property<string>("AudioUrl")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CreatorUserId")
+                    b.Property<Guid>("CreatedId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
@@ -158,9 +156,9 @@ namespace finalyearproject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatorUserId");
+                    b.HasIndex("CreatedId");
 
-                    b.ToTable("Meeting");
+                    b.ToTable("Meetings");
                 });
 
             modelBuilder.Entity("finalyearproject.Models.Minutes", b =>
@@ -349,7 +347,7 @@ namespace finalyearproject.Migrations
                 {
                     b.HasOne("finalyearproject.Models.User", "Creator")
                         .WithMany()
-                        .HasForeignKey("CreatorUserId")
+                        .HasForeignKey("CreatedId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
