@@ -1,8 +1,9 @@
+using finalyearproject.Data;
 using Microsoft.AspNetCore.Mvc;
 using finalyearproject.DTOs;
+using finalyearproject.Models;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.Wrappers;
-using finalyearproject.Models;
 
 namespace finalyearproject.Controllers;
 [ApiController]
@@ -10,34 +11,60 @@ namespace finalyearproject.Controllers;
 public class MinutesControllers: ControllerBase
 {
     private readonly Iminutes _minutesService;
+    private readonly AppDbContext  _context;
     
-    public  MinutesControllers(Iminutes minutesService)
+    public  MinutesControllers(Iminutes minutesService, AppDbContext context)
     {
         _minutesService = minutesService;
+        _context = context;
     }
     
     [HttpPost("generate")]
-    public async Task<IActionResult> GenerateMinutes([FromBody]  CreateMinutesDtos request)
+    public async Task<ApiResponse<string>> GenerateMinutes([FromBody]  CreateMinutesDtos request)
     {
-        if (string.IsNullOrWhiteSpace(request.Transcript))
+        if (string.IsNullOrWhiteSpace(request.MeetingId.ToString()) )
         {
-            return BadRequest("Transcript cannot be empty.");
+            return ApiResponse<string >.FailureResponse("Meeting id can't be  null ",statusCode:400);
         }
+        var  meeting  = request.MeetingId;
+         var meetingExists = await _context.Meetings.FindAsync(meeting);
+        if (meetingExists == null)        {
+            return ApiResponse<string>.FailureResponse("Meeting not found.",statusCode:404);
+        }   
+        
+        var transcript = _context.Transcripts.FirstOrDefault(t => t.MeetingId == meeting);
+        if (transcript == null)        {
+            return ApiResponse<string>.FailureResponse("Transcript file for the meeting not found.",  statusCode:404);
+        }
+        
+        
 
         try
         {
-            var minutes = await _minutesService.GenerateMinutesAsync(request.Transcript);
-            return Ok(new { Minutes = minutes });
+            var minutes = await _minutesService.GenerateMinutesAsync(transcript.Id);
+
+            var minute = new Minutes()
+            {
+                MeetingId = meeting,
+                DraftJson = minutes,
+                LlmModel = "Gemini Pro",
+
+            };
+            
+            _context.Minutes.Add(minute);
+            await _context.SaveChangesAsync();
+            return ApiResponse<string>.SuccessResponse(minutes,"message json craeted",statusCode:200);
         }
         catch (HttpRequestException ex)
         {
             // TEMPORARY: Expose the real error for debugging
-            return StatusCode(500, $"Error communicating with the AI service. Details: {ex.Message}");
+            
+            return  ApiResponse<string>.FailureResponse($"Error communicating with the AI service. Details: {ex.Message}",statusCode:500);
         }
         catch (Exception ex)
         {
             // Log the error here
-            return StatusCode(500, "An unexpected error occurred.");
+            return ApiResponse<string>.FailureResponse($"An unexpected error occurred. Details: {ex.Message}",statusCode:500);
         }
     }
 

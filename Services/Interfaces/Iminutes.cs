@@ -2,5 +2,5 @@ namespace finalyearproject.Services.Interfaces;
 
 public interface Iminutes
 {
-    Task<string> GenerateMinutesAsync(string transcript);
+    Task<string> GenerateMinutesAsync( Guid transcriptId);
 }

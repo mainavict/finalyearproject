@@ -2,7 +2,7 @@ namespace finalyearproject.DTOs;
 
 public class CreateMinutesDtos
 {
-    public string Transcript { get; set; } = string.Empty;
+    public Guid MeetingId { get; set; }
 }
 
 

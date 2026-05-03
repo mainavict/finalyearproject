@@ -220,6 +220,7 @@ namespace finalyearproject.Migrations
 
                     b.Property<string>("DraftJson")
                         .IsRequired()
+                        .HasMaxLength(100000000)
                         .HasColumnType("text");
 
                     b.Property<string>("LlmModel")
