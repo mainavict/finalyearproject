@@ -2,7 +2,7 @@ namespace finalyearproject.Models;
 
 public class Transcript
 {
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid MeetingId { get; set; }
     public string RawText { get; set; } = string.Empty;
     public string? Segments { get; set; } // JSON string

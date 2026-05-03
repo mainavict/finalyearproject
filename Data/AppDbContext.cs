@@ -14,6 +14,10 @@ public class AppDbContext : DbContext
     
     public DbSet<AudioFile> AudioFiles { get; set; }
     
+    public DbSet<Transcript> Transcripts { get; set; }
+    
+    public DbSet<Minutes> Minutes { get; set; }
+    
     
     
     protected override void OnModelCreating(ModelBuilder b)

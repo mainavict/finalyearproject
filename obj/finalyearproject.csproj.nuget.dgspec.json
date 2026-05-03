@@ -54,6 +54,10 @@
               "target": "Package",
               "version": "[4.0.22.1, )"
             },
+            "AssemblyAI": {
+              "target": "Package",
+              "version": "[1.2.2, )"
+            },
             "BCrypt.Net-Next": {
               "target": "Package",
               "version": "[4.1.0, )"
@@ -72,9 +76,21 @@
               "target": "Package",
               "version": "[9.0.0, )"
             },
+            "OpenAI": {
+              "target": "Package",
+              "version": "[2.10.0, )"
+            },
             "Scalar.AspNetCore": {
               "target": "Package",
               "version": "[2.13.17, )"
+            },
+            "Whisper.net": {
+              "target": "Package",
+              "version": "[1.9.0, )"
+            },
+            "Whisper.net.Runtime": {
+              "target": "Package",
+              "version": "[1.9.0, )"
             }
           },
           "imports": [

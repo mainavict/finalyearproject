@@ -23,7 +23,14 @@ builder.Services.AddScoped<IUsers, UserServices>();
 builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStrorage,LocalFileStorageService>();
+builder.Services.AddHttpClient();
 
+builder.Services.AddScoped<
+    ITranscriber,
+    GroqTranscriptionService>();
+
+builder.Services.AddHttpClient<Iminutes, MinutesServices>();
+builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>
 {

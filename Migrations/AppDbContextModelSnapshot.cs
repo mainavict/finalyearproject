@@ -331,7 +331,7 @@ namespace finalyearproject.Migrations
                     b.HasIndex("MeetingId")
                         .IsUnique();
 
-                    b.ToTable("Transcript");
+                    b.ToTable("Transcripts");
                 });
 
             modelBuilder.Entity("finalyearproject.Models.User", b =>
