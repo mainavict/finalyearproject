@@ -48,6 +48,8 @@ public class MinutesControllers: ControllerBase
                 MeetingId = meeting,
                 DraftJson = minutes,
                 LlmModel = "Gemini Pro",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
 
             };
             
