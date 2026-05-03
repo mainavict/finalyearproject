@@ -9,4 +9,6 @@ public interface IAudio
 //     Task<AudioUploadResult> UploadAsync(IFormFile file);
 
     Task<ApiResponse<AudioFile>> UploadAsync(Guid MeetindId ,IFormFile file);
+    Task<ApiResponse<AudioFile>> GetAudioByMeetingIdAsync(Guid meetingId);
+    Task <ApiResponse<List<AudioFile>>> GetAllAudioFilesAsync();
 }

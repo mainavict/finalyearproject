@@ -3,7 +3,10 @@ using System.Text;
 using System.Text.Json;
 using finalyearproject.Data;
 using finalyearproject.DTOs;
+using finalyearproject.Models;
+using finalyearproject.Wrappers;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore; 
 
 namespace finalyearproject.Services.Implementation;
 
@@ -40,15 +43,44 @@ public class MinutesServices:Iminutes
         
         // System instruction + the actual transcript data
         var prompt = $@"
-You are an expert executive assistant. Please read the following transcript and generate concise, professional meeting minutes. 
-Format the output with clear headings: 
-_ In attendance 
--Absent  with apology,
--Abesent without apology 
-- Meeting Summary
-- Key Discussion Points
-- Decisions Made
-- Action Items (with assignees if mentioned).
+You are a professional meeting secretary.
+    Read the following meeting transcript and extract structured meeting minutes.
+
+    RULES:
+    - Only include information explicitly stated in the transcript
+    - Do not invent or assume anything
+    - If a field cannot be determined, use null or empty array
+    - Action items must have a named owner
+    - Respond ONLY with raw valid JSON — no markdown, no code blocks,
+      no explanation, no backticks. Just the JSON object.
+
+    TRANSCRIPT:
+    {{transcript}}
+
+    Return this exact JSON structure:
+    {{{{
+      ""meetingTitle"":     ""string or null"",
+      ""meetingDate"":      ""string or null"",
+      ""attendees"":        [""name1"", ""name2""],
+      ""absentWithApology"":[""name1""],
+      ""absentWithoutApology"":[""name1""],
+      ""meetingSummary"":   ""string"",
+      ""discussionPoints"": [
+        {{{{
+          ""topic"":   ""string"",
+          ""summary"": ""string""
+        }}}}
+      ],
+      ""decisions"": [""string""],
+      ""actionItems"": [
+        {{{{
+          ""owner"":   ""string"",
+          ""task"":    ""string"",
+          ""dueDate"": ""string or null""
+        }}}}
+      ],
+      ""nextMeeting"": ""string or null""
+    }}}}
 
 Transcript:
 {transcriptRecord.RawText}";
@@ -85,6 +117,23 @@ Transcript:
         
 
         return generatedMinutes ?? "Failed to generate minutes.";
+    }
+    
+    
+    public async Task <ApiResponse<Minutes>> GetMinutesByMeetingIdAsync(Guid meetingId)
+    {
+        var minutes = await _context.Minutes.FirstOrDefaultAsync(m => m.MeetingId == meetingId);
+        if (minutes == null)
+        {
+            return ApiResponse<Minutes>.FailureResponse("Minutes not found for the given meeting ID.", statusCode: 404);
+        }
+        return  ApiResponse<Minutes>.SuccessResponse(minutes, "Minutes retrieved successfully.", statusCode: 200);
+    }
+    
+    public async Task <ApiResponse<List<Minutes>>> GetAllMinutesAsync()
+    {
+        var minutesList = await _context.Minutes.ToListAsync();
+        return ApiResponse<List<Minutes>>.SuccessResponse(minutesList, "All minutes retrieved successfully.", statusCode: 200);
     }
 
     

@@ -70,5 +70,27 @@ public class MinutesControllers: ControllerBase
         }
     }
 
+
+    [HttpGet("{meetingId}")]
+    public async Task<ApiResponse<Minutes>> GetMinutesByMeetingId(Guid meetingId)
+    {
+        if (meetingId == Guid.Empty)
+        {
+            return ApiResponse<Minutes>.FailureResponse("Meeting ID cannot be empty.", statusCode: 400);
+        }
+
+        var responce = await _minutesService.GetMinutesByMeetingIdAsync(meetingId);
+
+        return responce;
+
+    }
     
+    [HttpGet]
+    public async Task<ApiResponse<List<Minutes>>> GetAllMinutes()
+    {
+        var responce = await _minutesService.GetAllMinutesAsync();
+
+        return responce;
+
+     }
 }

@@ -2,6 +2,7 @@ using finalyearproject.Data;
 using finalyearproject.Services.Interfaces;
 using  finalyearproject.Models;
 using finalyearproject.Wrappers;
+using Microsoft.EntityFrameworkCore; // <-- Add this line!
 
 namespace finalyearproject.Services.Implementation;
 
@@ -76,6 +77,26 @@ public class AudioServices: IAudio
             throw new Exception("File too large");
         }
 
+    }
+    
+    public async Task <ApiResponse<AudioFile>> GetAudioByMeetingIdAsync(Guid meetingId)
+    {
+        var audio = await _context.AudioFiles.FirstOrDefaultAsync(a => a.MeetingId == meetingId);
+        if (audio == null)
+        {
+            _logger.LogWarning("No audio file found for meeting {MeetingId}", meetingId);
+            return ApiResponse<AudioFile>.FailureResponse("Audio file not found for this meeting",404);
+        }
+        
+        _logger.LogInformation("Audio file {FileName} retrieved for meeting {MeetingId}", audio.FileName, meetingId);
+        return ApiResponse<AudioFile>.SuccessResponse(audio,message: "Audio file retrieved successfully",statusCode: 200);
+    }
+    
+    public async Task <ApiResponse<List<AudioFile>>> GetAllAudioFilesAsync()
+    {
+        var audioFiles = await _context.AudioFiles.ToListAsync();
+        _logger.LogInformation("{Count} audio files retrieved", audioFiles.Count);
+        return ApiResponse<List<AudioFile>>.SuccessResponse(audioFiles,message: "Audio files retrieved successfully",statusCode: 200);
     }
     
 }
