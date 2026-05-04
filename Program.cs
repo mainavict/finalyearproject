@@ -25,11 +25,23 @@ builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage,BackblazeStorage>();
 builder.Services.AddHttpClient();
 
-builder.Services.AddScoped<
-    ITranscriber,
-    GroqTranscriptionService>();
+builder.Services.AddHttpClient("Backblaze", c =>
+{
+    c.Timeout = TimeSpan.FromMinutes(10);  // large files take time
+});
 
+// Client for Groq API
+builder.Services.AddHttpClient("Groq", c =>
+{
+    c.BaseAddress = new Uri("https://api.groq.com");
+    c.Timeout     = TimeSpan.FromMinutes(10);
+});
+
+// Register transcription service
 builder.Services.AddHttpClient<Iminutes, MinutesServices>();
+// Program.cs
+builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
+builder.Services.AddHttpClient<ITranscriber, GroqTranscriptionService>();
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options =>

@@ -33,7 +33,7 @@ public class MeetingServices:Imeeting
             Description = createDto.Description,
             ScheduledAt = createDto.ScheduledAt,
             CreatedAt = DateTime.UtcNow,
-            CreatedId = userId,
+            CreatorId = userId,
         };
         
         _context.Meetings.Add(newMeeting);
@@ -48,7 +48,7 @@ public class MeetingServices:Imeeting
             Title = newMeeting.Title,
             Description = newMeeting.Description,
            Status = newMeeting.Status.ToString(),
-            CreatedBy = newMeeting.CreatedId,
+            CreatedBy = newMeeting.CreatorId,
             ApprovedAt = newMeeting.ApprovedAt,
              ApprovedBy = newMeeting.ApprovedBy,
             AudioUrl = newMeeting.AudioUrl,
@@ -79,7 +79,7 @@ public class MeetingServices:Imeeting
             Title = meeting.Title,
             Description = meeting.Description,
             Status = meeting.Status.ToString(),
-            CreatedBy = meeting.CreatedId,
+            CreatedBy = meeting.CreatorId,
             ApprovedBy = meeting.ApprovedBy,
             AudioUrl = meeting.AudioUrl,
             ScheduledAt = meeting.ScheduledAt,
@@ -102,7 +102,7 @@ public class MeetingServices:Imeeting
             return ApiResponse<IEnumerable<ResponseMeetingDto>>.FailureResponse("User not found", 404);
         }
 
-        var meetings = await _context.Meetings.Where(m => m.CreatedId == userId).ToListAsync();
+        var meetings = await _context.Meetings.Where(m => m.CreatorId == userId).ToListAsync();
         
         var  response = meetings.Select(meeting => new ResponseMeetingDto()
         {
@@ -110,7 +110,7 @@ public class MeetingServices:Imeeting
             Title = meeting.Title,
             Description = meeting.Description,
             Status = meeting.Status.ToString(),
-            CreatedBy = meeting.CreatedId,
+            CreatedBy = meeting.CreatorId,
             ApprovedBy = meeting.ApprovedBy,
             AudioUrl = meeting.AudioUrl,
             ScheduledAt = meeting.ScheduledAt,
@@ -135,7 +135,7 @@ public class MeetingServices:Imeeting
             Title = meeting.Title,
             Description = meeting.Description,
             Status = meeting.Status.ToString(),
-            CreatedBy = meeting.CreatedId,
+            CreatedBy = meeting.CreatorId,
             ApprovedBy = meeting.ApprovedBy,
             AudioUrl = meeting.AudioUrl,
             ScheduledAt = meeting.ScheduledAt,
@@ -187,7 +187,7 @@ public class MeetingServices:Imeeting
            Title = meeting.Title,
            Description = meeting.Description,
            Status = meeting.Status.ToString(),
-           CreatedBy = meeting.CreatedId,
+           CreatedBy = meeting.CreatorId,
            ApprovedBy = meeting.ApprovedBy,
            AudioUrl = meeting.AudioUrl,
            ScheduledAt = meeting.ScheduledAt,
@@ -239,7 +239,7 @@ public class MeetingServices:Imeeting
            Title = meeting.Title,
            Description = meeting.Description,
            Status = meeting.Status.ToString(),
-           CreatedBy = meeting.CreatedId,
+           CreatedBy = meeting.CreatorId,
            ApprovedBy = meeting.ApprovedBy,
            AudioUrl = meeting.AudioUrl,
            ScheduledAt = meeting.ScheduledAt,

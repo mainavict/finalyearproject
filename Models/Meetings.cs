@@ -16,7 +16,7 @@ public class Meeting
     [Key]
     public Guid Id { get; set; } =   Guid.NewGuid();
     [ForeignKey("Creator")]
-    public Guid CreatedId { get; set; }
+    public Guid CreatorId { get; set; }
     public Guid? ApprovedBy { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

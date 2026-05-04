@@ -99,7 +99,7 @@ namespace finalyearproject.Migrations
 
                     b.HasIndex("SendGridMessageId");
 
-                    b.ToTable("EmailDeliveryLog");
+                    b.ToTable("EmailDeliveryLogs");
                 });
 
             modelBuilder.Entity("finalyearproject.Models.EmailOtp", b =>
@@ -137,7 +137,7 @@ namespace finalyearproject.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EmailOtp");
+                    b.ToTable("EmailOtps");
                 });
 
             modelBuilder.Entity("finalyearproject.Models.Meeting", b =>
@@ -165,7 +165,7 @@ namespace finalyearproject.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("CreatedId")
+                    b.Property<Guid>("CreatorId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
@@ -193,7 +193,9 @@ namespace finalyearproject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedId");
+                    b.HasIndex("CreatorId");
+
+                    b.HasIndex("CreatorId", "Status");
 
                     b.ToTable("Meetings");
                 });
@@ -300,7 +302,7 @@ namespace finalyearproject.Migrations
 
                     b.HasIndex("MinutesId", "VersionNumber");
 
-                    b.ToTable("MinutesVersion");
+                    b.ToTable("MinutesVersions");
                 });
 
             modelBuilder.Entity("finalyearproject.Models.Transcript", b =>
@@ -385,7 +387,7 @@ namespace finalyearproject.Migrations
                 {
                     b.HasOne("finalyearproject.Models.User", "Creator")
                         .WithMany()
-                        .HasForeignKey("CreatedId")
+                        .HasForeignKey("CreatorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
