@@ -1,37 +1,66 @@
+using Amazon.S3;
+using Amazon.S3.Model;
 using finalyearproject.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 
-namespace finalyearproject.Services.Implementation;
-
-public class LocalFileStorageService:IStrorage
+public class BackblazeStorage : IStorage
 {
-    private readonly IWebHostEnvironment _env;
+    private readonly IAmazonS3 _client;
+    private readonly string _bucketName;
 
-    public LocalFileStorageService(IWebHostEnvironment env)
+    public BackblazeStorage(IConfiguration config)
     {
-        _env = env;
+        var accessKey = config["Backblaze:KeyId"];
+        var secretKey = config["Backblaze:ApplicationKey"];
+        var endpoint = config["Backblaze:Endpoint"];
+
+        _bucketName = config["Backblaze:Bucket"];
+
+        var configS3 = new AmazonS3Config
+        {
+            ServiceURL = endpoint,
+            ForcePathStyle = true
+        };
+
+        _client = new AmazonS3Client(accessKey, secretKey, configS3);
     }
-    public async Task<string> SaveFileAsync(
-        IFormFile file,
-        string folder)
+
+    public async Task<string> UploadAsync(IFormFile file, string folder)
     {
-        var uploadsFolder =
-            Path.Combine(_env.WebRootPath, folder);
+        var safeFileName = Path.GetFileNameWithoutExtension(file.FileName)
+            .Replace(" ", "_")
+            .Replace("[", "")
+            .Replace("]", "")
+            .Replace("(", "")
+            .Replace(")", "");
 
-        if (!Directory.Exists(uploadsFolder))
-            Directory.CreateDirectory(uploadsFolder);
+        var extension = Path.GetExtension(file.FileName);
 
-        var uniqueFileName =
-            $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+        var key = $"{folder}/{Guid.NewGuid()}_{safeFileName}{extension}";
 
-        var fullPath =
-            Path.Combine(uploadsFolder, uniqueFileName);
 
-        using var stream =
-            new FileStream(fullPath, FileMode.Create);
+        using var stream = file.OpenReadStream();
 
-        await file.CopyToAsync(stream);
+        var request = new PutObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            InputStream = stream,
+            ContentType = file.ContentType
+        };
 
-        return $"/{folder}/{uniqueFileName}";
+        await _client.PutObjectAsync(request);
+
+        return key; // store this in DB
     }
-    
+
+    public string GetFileUrl(string fileKey)
+    {
+        return $"https://f004.backblazeb2.com/file/{_bucketName}/{fileKey}";
+    }
+
+    public Task DeleteAsync(string fileId)
+    {
+        return _client.DeleteObjectAsync(_bucketName, fileId);
+    }
 }

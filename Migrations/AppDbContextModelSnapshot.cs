@@ -44,6 +44,10 @@ namespace finalyearproject.Migrations
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("MeetingId")
                         .HasColumnType("uuid");
 

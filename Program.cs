@@ -22,7 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUsers, UserServices>();
 builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
-builder.Services.AddScoped<IStrorage,LocalFileStorageService>();
+builder.Services.AddScoped<IStorage,BackblazeStorage>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<

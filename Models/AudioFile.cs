@@ -21,6 +21,8 @@ public class AudioFile
     public Guid MeetingId { get; set; } 
     public string FileName { get; set; }
     public string FilePath { get; set; }
+    
+    public  string FileUrl { get; set; }
     public string ContentType { get; set; }
     public long FileSize { get; set; }
     public stutus Status { get; set; } = stutus.pending;

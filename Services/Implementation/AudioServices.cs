@@ -8,11 +8,11 @@ namespace finalyearproject.Services.Implementation;
 
 public class AudioServices: IAudio
 {
-    private readonly IStrorage _storage;
+    private readonly IStorage _storage;
     private  readonly AppDbContext  _context;
-    private ILogger<UserServices> _logger;
+    private ILogger<AudioServices> _logger;
 
-    public AudioServices(IStrorage storage, AppDbContext context, ILogger<UserServices> logger)
+    public AudioServices(IStorage storage, AppDbContext context, ILogger<AudioServices> logger)
     {
         _storage = storage;
         _context = context;
@@ -32,15 +32,17 @@ public class AudioServices: IAudio
         
         ValidateAudio(file);
 
-        var path =
-            await _storage.SaveFileAsync(file, "audio");
+        var fileKey = await _storage.UploadAsync(file, "audio");
+        var fileUrl = _storage.GetFileUrl(fileKey);
+
 
         var audio = new AudioFile
         {
             Id = Guid.NewGuid(),
             MeetingId =  meeting.Id,
             FileName = file.FileName,
-            FilePath = path,
+            FilePath = fileKey,
+            FileUrl = fileUrl,
             ContentType = file.ContentType,
             FileSize = file.Length,
             Status = stutus.pending
@@ -94,7 +96,10 @@ public class AudioServices: IAudio
     
     public async Task <ApiResponse<List<AudioFile>>> GetAllAudioFilesAsync()
     {
-        var audioFiles = await _context.AudioFiles.ToListAsync();
+        var audioFiles = await _context.AudioFiles
+            .AsNoTracking()
+            .ToListAsync();
+
         _logger.LogInformation("{Count} audio files retrieved", audioFiles.Count);
         return ApiResponse<List<AudioFile>>.SuccessResponse(audioFiles,message: "Audio files retrieved successfully",statusCode: 200);
     }
