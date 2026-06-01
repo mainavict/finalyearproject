@@ -8561,7 +8561,7 @@
     ]
   },
   "packageFolders": {
-    "/home/runner/.nuget/packages/": {}
+    "/tmp/codeql-scratch-0cea7211c4fef8eb/dbs/csharp/working/packages": {}
   },
   "project": {
     "version": "1.0.0",
@@ -8569,7 +8569,7 @@
       "projectUniqueName": "/tmp/workspace/mainavict/finalyearproject/finalyearproject.csproj",
       "projectName": "finalyearproject",
       "projectPath": "/tmp/workspace/mainavict/finalyearproject/finalyearproject.csproj",
-      "packagesPath": "/home/runner/.nuget/packages/",
+      "packagesPath": "/tmp/codeql-scratch-0cea7211c4fef8eb/dbs/csharp/working/packages",
       "outputPath": "/tmp/workspace/mainavict/finalyearproject/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
@@ -8659,6 +8659,20 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.16, 9.0.16]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.linux-x64",
+            "version": "[9.0.16, 9.0.16]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.16, 9.0.16]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.AspNetCore.App": {
             "privateAssets": "none"

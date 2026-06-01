@@ -10,11 +10,11 @@ public class BackblazeStorage : IStorage
 
     public BackblazeStorage(IConfiguration config)
     {
-        var accessKey = config["Backblaze:KeyId"];
-        var secretKey = config["Backblaze:ApplicationKey"];
-        var endpoint = config["Backblaze:Endpoint"];
+        var accessKey = config["BackblazeB2:ApplicationKeyId"];
+        var secretKey = config["BackblazeB2:ApplicationKey"];
+        var endpoint = config["BackblazeB2:Endpoint"];
 
-        _bucketName = config["Backblaze:Bucket"];
+        _bucketName = config["BackblazeB2:BucketName"]!;
 
         var configS3 = new AmazonS3Config
         {
