@@ -31,8 +31,9 @@ public class WebhookController : ControllerBase
 
     /// <summary>
     /// Receives Recall.ai webhook events.
-    /// When a bot finishes recording, the audio is downloaded from Recall.ai,
-    /// uploaded to Backblaze B2, and an AudioFile record is persisted and linked
+    /// Tracks the bot lifecycle (joining → recording → done / fatal) and,
+    /// when a bot finishes recording, downloads the audio from Recall.ai,
+    /// uploads it to Backblaze B2, and persists an AudioFile record linked
     /// to the relevant meeting.
     /// </summary>
     [HttpPost("recall")]
@@ -41,14 +42,10 @@ public class WebhookController : ControllerBase
         _logger.LogInformation(
             "Recall.ai webhook received. Event: {Event}", Sanitize(payload.Event));
 
-        // Only act on bot.done — the recording is complete at this point
-        if (payload.Event != "bot.done")
-            return Ok(new { message = $"Event '{payload.Event}' acknowledged, no action required." });
-
         var botData = payload.Data?.Bot;
         if (botData == null)
         {
-            _logger.LogWarning("bot.done webhook received with no bot data.");
+            _logger.LogWarning("Webhook received with no bot data. Event: {Event}", Sanitize(payload.Event));
             return BadRequest(new { message = "Missing bot data in webhook payload." });
         }
 
@@ -63,21 +60,62 @@ public class WebhookController : ControllerBase
             return NotFound(new { message = $"No meeting found for bot {botData.Id}." });
         }
 
-        // ── Process each recording produced by the bot ────────────────────────
-        var recordings = botData.Outputs?.Recordings;
-        if (recordings == null || recordings.Count == 0)
+        switch (payload.Event)
         {
-            _logger.LogWarning(
-                "bot.done for {BotId} but no recordings in payload.", Sanitize(botData.Id));
-            return Ok(new { message = "Bot done but no recordings to process." });
-        }
+            // ── Bot is joining the meeting ────────────────────────────────────
+            case "bot.joining_call":
+                meeting.Status    = MeetingStatus.Scheduled;
+                meeting.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Bot {BotId} is joining meeting {MeetingId}", Sanitize(botData.Id), meeting.Id);
+                return Ok(new { message = "Bot joining call acknowledged." });
 
-        foreach (var recordingRef in recordings)
-        {
-            await ProcessRecordingAsync(meeting, recordingRef);
-        }
+            // ── Bot is in the call and actively recording ─────────────────────
+            case "bot.in_call_recording":
+                meeting.Status    = MeetingStatus.Recording;
+                meeting.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Bot {BotId} is recording meeting {MeetingId}", Sanitize(botData.Id), meeting.Id);
+                return Ok(new { message = "Bot recording acknowledged." });
 
-        return Ok(new { message = "Webhook processed successfully." });
+            // ── Bot is in the call but not yet recording (waiting for host etc.) ─
+            case "bot.in_call_not_recording":
+                _logger.LogInformation(
+                    "Bot {BotId} is in call but not recording for meeting {MeetingId}",
+                    Sanitize(botData.Id), meeting.Id);
+                return Ok(new { message = "Bot in call, not recording." });
+
+            // ── Recording complete — download audio and store in Backblaze ────
+            case "bot.done":
+                var recordings = botData.Outputs?.Recordings;
+                if (recordings == null || recordings.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "bot.done for {BotId} but no recordings in payload.", Sanitize(botData.Id));
+                    return Ok(new { message = "Bot done but no recordings to process." });
+                }
+
+                foreach (var recordingRef in recordings)
+                {
+                    await ProcessRecordingAsync(meeting, recordingRef);
+                }
+                return Ok(new { message = "Webhook processed successfully." });
+
+            // ── Bot encountered a fatal error ─────────────────────────────────
+            case "bot.fatal":
+                meeting.Status    = MeetingStatus.Failed;
+                meeting.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogError(
+                    "Bot {BotId} reported a fatal error for meeting {MeetingId}",
+                    Sanitize(botData.Id), meeting.Id);
+                return Ok(new { message = "Bot fatal error acknowledged." });
+
+            default:
+                _logger.LogInformation(
+                    "Unhandled event '{Event}' for bot {BotId}", Sanitize(payload.Event), Sanitize(botData.Id));
+                return Ok(new { message = $"Event '{payload.Event}' acknowledged, no action required." });
+        }
     }
 
     // ── Private helper ────────────────────────────────────────────────────────

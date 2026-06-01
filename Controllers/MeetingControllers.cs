@@ -3,6 +3,7 @@ using finalyearproject.Services.Interfaces;
 using finalyearproject.DTOs;
 using finalyearproject.Wrappers;
 using finalyearproject.Data;
+using finalyearproject.Models;
 
 
 namespace finalyearproject.Controllers;
@@ -97,6 +98,8 @@ public class MeetingControllers : ControllerBase
             var bot = await _recallAiService.CreateBotAsync(dto.MeetingUrl, dto.BotName ?? "Minutes Assistant");
 
             meeting.RecallBotId = bot.Id;
+            meeting.Status      = MeetingStatus.Scheduled;
+            meeting.UpdatedAt   = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation(

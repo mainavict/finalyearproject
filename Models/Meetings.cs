@@ -7,7 +7,9 @@ public enum MeetingStatus
 {
     Created,
     Scheduled,
+    Recording,
     Completed,
+    Failed,
     Approved,
     Rejected
 }
