@@ -6,6 +6,197 @@ AI-generated meeting minutes.
 
 ---
 
+## Setup Guide
+
+Follow these steps to get the project running from scratch.
+
+### Prerequisites
+
+| Tool | Minimum version |
+|------|-----------------|
+| [.NET SDK](https://dotnet.microsoft.com/download) | 9.0 |
+| [PostgreSQL](https://www.postgresql.org/) or a [Supabase](https://supabase.com/) project | – |
+| [EF Core CLI](https://learn.microsoft.com/ef/core/cli/dotnet) | 9.0 |
+
+Install the EF Core CLI tool once if you haven't already:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+---
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd finalyearproject
+```
+
+---
+
+### 2. Create your configuration file
+
+The `appsettings.json` file holds all secrets and connection strings.
+Copy the template below, fill in your own values, and save it as `appsettings.json`
+in the project root (alongside `Program.cs`).
+
+```jsonc
+{
+  "ConnectionStrings": {
+    // PostgreSQL / Supabase connection string
+    "DefaultConnection": "Host=<host>;Port=5432;Database=postgres;Username=<user>;******;SSL Mode=Require;Trust Server Certificate=true"
+  },
+
+  "BackblazeB2": {
+    // keyID shown when you create an application key in the Backblaze dashboard
+    "ApplicationKeyId": "<your-application-key-id>",
+    // secret key shown once at creation time
+    "ApplicationKey":   "<your-application-key>",
+    // bucket ID (visible in the bucket details panel)
+    "BucketId":         "<your-bucket-id>",
+    // bucket name you chose when creating the bucket
+    "BucketName":       "<your-bucket-name>",
+    // S3-compatible endpoint for your bucket's region, e.g.:
+    //   us-west-004  → https://s3.us-west-004.backblazeb2.com
+    //   eu-central-003 → https://s3.eu-central-003.backblazeb2.com
+    "Endpoint":         "https://s3.<region>.backblazeb2.com"
+  },
+
+  "RecallAi": {
+    // API key from https://app.recall.ai → Settings → API Keys
+    "ApiKey":  "<your-recall-ai-api-key>",
+    // Use the region closest to your users, e.g. https://eu-central-1.recall.ai/api/v1/
+    "BaseUrl": "https://<region>.recall.ai/api/v1/"
+  },
+
+  "Groq": {
+    // API key from https://console.groq.com → API Keys
+    "ApiKey": "<your-groq-api-key>"
+  },
+
+  "GeminiApi": {
+    // API key from https://aistudio.google.com → Get API key
+    "ApiKey": "<your-gemini-api-key>",
+    "Url":    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+```
+
+> **Security tip:** Add `appsettings.json` to your `.gitignore` to avoid committing real credentials.  
+> Use `appsettings.Development.json` (already git-ignored by the standard .NET template) for local overrides,
+> or use [.NET User Secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets) in development:
+> ```bash
+> dotnet user-secrets init
+> dotnet user-secrets set "BackblazeB2:ApplicationKey" "<value>"
+> # …repeat for each secret
+> ```
+
+---
+
+### 3. Set up Backblaze B2
+
+1. Log in to [backblaze.com](https://www.backblaze.com/) and open **B2 Cloud Storage**.
+2. Click **Create a Bucket** – choose a unique name (e.g. `minutesassistant`).
+   - Set **Files in Bucket are** → **Public** if you want direct-link playback, or **Private** to require signed URLs.
+3. Note the **Bucket ID** and **Endpoint** shown in the bucket details panel.
+4. Go to **Application Keys** → **Add a New Application Key**.
+   - Restrict it to your bucket, and grant **Read and Write** access.
+   - Copy the **keyID** and **applicationKey** immediately (the key is shown only once).
+5. Enter all four values (`ApplicationKeyId`, `ApplicationKey`, `BucketId`, `BucketName`, `Endpoint`) into `appsettings.json`.
+
+---
+
+### 4. Set up Recall.ai
+
+1. Sign up at [app.recall.ai](https://app.recall.ai).
+2. From **Settings → API Keys**, create a new key and paste it into `appsettings.json` → `RecallAi:ApiKey`.
+3. Set `RecallAi:BaseUrl` to the region endpoint closest to your meetings (e.g. `https://eu-central-1.recall.ai/api/v1/`).
+
+#### Register the webhook
+
+Recall.ai must be told where to send bot-lifecycle events.
+
+1. In the Recall.ai dashboard open **Webhooks → Add endpoint**.
+2. Set the URL to your deployed API:
+   ```
+   https://<your-domain>/api/webhook/recall
+   ```
+   For local development use a tunnel such as [ngrok](https://ngrok.com/):
+   ```bash
+   ngrok http 5000
+   # copy the https://<id>.ngrok.io URL → https://<id>.ngrok.io/api/webhook/recall
+   ```
+3. Enable **at minimum** the following event types:
+   - `bot.joining_call`
+   - `bot.in_call_not_recording`
+   - `bot.in_call_recording`
+   - `bot.done`
+   - `bot.fatal`
+4. Save the endpoint.  
+   When a bot finishes recording (`bot.done`), Recall.ai will POST to this URL and the API will automatically download the audio and upload it to Backblaze B2.
+
+---
+
+### 5. Apply database migrations
+
+```bash
+dotnet ef database update
+```
+
+This creates all tables in the PostgreSQL database specified by `ConnectionStrings:DefaultConnection`.
+
+---
+
+### 6. Run the API
+
+```bash
+# Restore NuGet packages
+dotnet restore
+
+# Start the development server
+dotnet run
+```
+
+The API will be available at:
+
+| URL | Description |
+|-----|-------------|
+| `https://localhost:5001` | HTTPS |
+| `http://localhost:5000` | HTTP |
+| `https://localhost:5001/scalar/v1` | Interactive API docs (Scalar UI) |
+
+---
+
+### 7. Quick smoke test
+
+Dispatch a recording bot to a test meeting:
+
+```bash
+# 1. Create a meeting
+curl -X POST https://localhost:5001/api/meeting \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Test meeting","creatorId":"<user-guid>","meetingUrl":"https://meet.google.com/xxx-yyyy-zzz"}'
+
+# 2. Send the bot (replace <meeting-id> with the ID returned above)
+curl -X POST https://localhost:5001/api/meeting/<meeting-id>/bot
+```
+
+Once the bot leaves the call Recall.ai will fire `bot.done` → your webhook stores the
+audio in Backblaze B2 and the `AudioFiles` table is populated.
+
+---
+
+---
+
 ## What Has Been Implemented
 
 ### 1. Meeting Management (`/api/meeting`)

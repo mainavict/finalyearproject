@@ -9,6 +9,7 @@ namespace finalyearproject.Services.Implementation;
 public class RecallAiService : IRecallAiService
 {
     private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<RecallAiService> _logger;
 
@@ -20,12 +21,14 @@ public class RecallAiService : IRecallAiService
 
     public RecallAiService(
         HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
         ILogger<RecallAiService> logger)
     {
-        _httpClient    = httpClient;
-        _configuration = configuration;
-        _logger        = logger;
+        _httpClient        = httpClient;
+        _httpClientFactory = httpClientFactory;
+        _configuration     = configuration;
+        _logger            = logger;
 
         var apiKey  = _configuration["RecallAi:ApiKey"]
                       ?? throw new InvalidOperationException("RecallAi:ApiKey is missing.");
@@ -98,10 +101,11 @@ public class RecallAiService : IRecallAiService
     {
         _logger.LogInformation("Downloading audio from Recall.ai URL: {AudioUrl}", audioUrl);
 
-        // Use a plain GET without auth header — Recall.ai media URLs are pre-signed
-        using var request = new HttpRequestMessage(HttpMethod.Get, audioUrl);
-        var response = await _httpClient.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead);
+        // Use a fresh client with no auth headers — Recall.ai media URLs are pre-signed
+        // and must not receive the Recall.ai Authorization token.
+        var plainClient = _httpClientFactory.CreateClient();
+        var response = await plainClient.GetAsync(
+            audioUrl, HttpCompletionOption.ResponseHeadersRead);
 
         if (!response.IsSuccessStatusCode)
         {

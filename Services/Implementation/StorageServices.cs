@@ -7,18 +7,19 @@ public class BackblazeStorage : IStorage
 {
     private readonly IAmazonS3 _client;
     private readonly string _bucketName;
+    private readonly string _endpoint;
 
     public BackblazeStorage(IConfiguration config)
     {
         var accessKey = config["BackblazeB2:ApplicationKeyId"];
         var secretKey = config["BackblazeB2:ApplicationKey"];
-        var endpoint = config["BackblazeB2:Endpoint"];
+        _endpoint   = config["BackblazeB2:Endpoint"]!.TrimEnd('/');
 
         _bucketName = config["BackblazeB2:BucketName"]!;
 
         var configS3 = new AmazonS3Config
         {
-            ServiceURL = endpoint,
+            ServiceURL = _endpoint,
             ForcePathStyle = true
         };
 
@@ -56,7 +57,7 @@ public class BackblazeStorage : IStorage
 
     public string GetFileUrl(string fileKey)
     {
-        return $"https://f004.backblazeb2.com/file/{_bucketName}/{fileKey}";
+        return $"{_endpoint}/{_bucketName}/{fileKey}";
     }
 
     public Task DeleteAsync(string fileId)
