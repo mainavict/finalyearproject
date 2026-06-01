@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.DTOs;
 using finalyearproject.Wrappers;
+using finalyearproject.Data;
 
 
 namespace finalyearproject.Controllers;
@@ -11,10 +12,20 @@ public class MeetingControllers : ControllerBase
 {
     
     private  readonly Imeeting _meetingService;
+    private readonly IRecallAiService _recallAiService;
+    private readonly AppDbContext _context;
+    private readonly ILogger<MeetingControllers> _logger;
     
-    public MeetingControllers(Imeeting meetingService)
+    public MeetingControllers(
+        Imeeting meetingService,
+        IRecallAiService recallAiService,
+        AppDbContext context,
+        ILogger<MeetingControllers> logger)
     {
-        _meetingService = meetingService;
+        _meetingService  = meetingService;
+        _recallAiService = recallAiService;
+        _context         = context;
+        _logger          = logger;
     }
     
     
@@ -66,8 +77,50 @@ public class MeetingControllers : ControllerBase
         var result = await _meetingService.DeleteMeetingAsync(meetingId, userId);
         return result;
     }
-    
-    
+
+    /// <summary>
+    /// Sends a Recall.ai recording bot to a live meeting.
+    /// Supply the meeting's video URL (Zoom, Teams, Meet…).
+    /// </summary>
+    [HttpPost("{id}/bot")]
+    public async Task<ApiResponse<SendBotResponseDto>> SendBot(Guid id, [FromBody] SendBotDto dto)
+    {
+        var meeting = await _context.Meetings.FindAsync(id);
+        if (meeting == null)
+        {
+            _logger.LogWarning("Meeting {MeetingId} not found when sending bot", id);
+            return ApiResponse<SendBotResponseDto>.FailureResponse("Meeting not found", 404);
+        }
+
+        try
+        {
+            var bot = await _recallAiService.CreateBotAsync(dto.MeetingUrl, dto.BotName ?? "Minutes Assistant");
+
+            meeting.RecallBotId = bot.Id;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Bot {BotId} dispatched to meeting {MeetingId}", bot.Id, id);
+
+            return ApiResponse<SendBotResponseDto>.SuccessResponse(
+                new SendBotResponseDto
+                {
+                    BotId     = bot.Id,
+                    MeetingId = id,
+                    Message   = "Bot is joining the meeting"
+                },
+                "Bot dispatched successfully",
+                202);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch bot for meeting {MeetingId}", id);
+            return ApiResponse<SendBotResponseDto>.FailureResponse(ex.Message, 500);
+        }
+    }
+
+
   
+
     
 }

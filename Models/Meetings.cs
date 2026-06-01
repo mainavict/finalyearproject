@@ -33,6 +33,9 @@ public class Meeting
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; } = false;
 
+    /// <summary>Recall.ai bot ID assigned when a recording bot joins this meeting.</summary>
+    public string? RecallBotId { get; set; }
+
     public User Creator { get; set; } = null!;
     public Transcript? Transcript { get; set; }
     public Minutes? Minutes { get; set; }
