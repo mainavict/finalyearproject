@@ -23,6 +23,7 @@ builder.Services.AddScoped<IUsers, UserServices>();
 builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage,BackblazeStorage>();
+builder.Services.AddHttpClient<IRecallAiService, RecallAiService>();
 builder.Services.AddHttpClient();
 
 builder.Services.AddHttpClient("Backblaze", c =>

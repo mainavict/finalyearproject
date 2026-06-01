@@ -177,6 +177,9 @@ namespace finalyearproject.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("RecallBotId")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("ScheduledAt")
                         .HasColumnType("timestamp with time zone");
 

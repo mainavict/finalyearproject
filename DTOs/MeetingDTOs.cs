@@ -60,3 +60,12 @@ public class UpdateMeetingDto
     {
         public bool Approve { get; set; }
     }
+
+    public class SendBotDto
+    {
+        /// <summary>Live meeting URL (Zoom, Teams, Google Meet, etc.).</summary>
+        public string MeetingUrl { get; set; } = string.Empty;
+
+        /// <summary>Optional display name shown in the meeting for the bot.</summary>
+        public string? BotName { get; set; }
+    }
