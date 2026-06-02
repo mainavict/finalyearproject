@@ -4,44 +4,51 @@ using finalyearproject.DTOs;
 using finalyearproject.Wrappers;
 using finalyearproject.Data;
 using finalyearproject.Models;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 
 namespace finalyearproject.Controllers;
+
 [ApiController]
 [Route("api/[controller]")]
 public class MeetingControllers : ControllerBase
 {
-    
-    private  readonly Imeeting _meetingService;
-    private readonly IRecallAiService _recallAiService;
+
+    private readonly Imeeting _meetingService;
+    private readonly IRecallAiService _recallService;
     private readonly AppDbContext _context;
     private readonly ILogger<MeetingControllers> _logger;
-    
+
     public MeetingControllers(
         Imeeting meetingService,
         IRecallAiService recallAiService,
         AppDbContext context,
         ILogger<MeetingControllers> logger)
     {
-        _meetingService  = meetingService;
-        _recallAiService = recallAiService;
-        _context         = context;
-        _logger          = logger;
+        _meetingService = meetingService;
+        _recallService = recallAiService;
+        _context = context;
+        _logger = logger;
     }
-    
-    
-    
+
+
+
     [HttpPost]
-    public  async Task<ApiResponse<ResponseMeetingDto>> CreateMeeting([FromBody] CreateMeetingDto createDto, Guid userId)
+    public async Task<ApiResponse<ResponseMeetingDto>> CreateMeeting([FromBody] CreateMeetingDto createDto, Guid userId)
     {
         var result = await _meetingService.CreateMeetingAsync(createDto, userId);
         return result;
     }
-    
-    
-    
+
+
+
     [HttpGet]
-    public async  Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetAllMeetingsAsync()
+    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetAllMeetingsAsync()
     {
         var result = await _meetingService.GetAllMeetingsAsync();
         return result;
@@ -71,7 +78,7 @@ public class MeetingControllers : ControllerBase
         var result = await _meetingService.UpdateMeetingAsync(meetingId, updateDto, userId);
         return result;
     }
-    
+
     [HttpDelete("{id}")]
     public async Task<ApiResponse<bool>> DeleteMeetingAsync(Guid meetingId, Guid userId)
     {
@@ -79,51 +86,48 @@ public class MeetingControllers : ControllerBase
         return result;
     }
 
-    /// <summary>
-    /// Sends a Recall.ai recording bot to a live meeting.
-    /// Supply the meeting's video URL (Zoom, Teams, Meet…).
-    /// </summary>
-    [HttpPost("{id}/bot")]
-    public async Task<ApiResponse<SendBotResponseDto>> SendBot(Guid id, [FromBody] SendBotDto dto)
-    {
-        var meeting = await _context.Meetings.FindAsync(id);
-        if (meeting == null)
-        {
-            _logger.LogWarning("Meeting {MeetingId} not found when sending bot", id);
-            return ApiResponse<SendBotResponseDto>.FailureResponse("Meeting not found", 404);
-        }
 
+
+    [HttpPost("start")]
+    public async Task<IActionResult> StartRecording([FromBody] StartMeetingRequest request, CancellationToken ct)
+    {
         try
         {
-            var bot = await _recallAiService.CreateBotAsync(dto.MeetingUrl, dto.BotName ?? "Minutes Assistant");
-
-            meeting.RecallBotId = bot.Id;
-            meeting.Status      = MeetingStatus.Scheduled;
-            meeting.UpdatedAt   = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Bot {BotId} dispatched to meeting {MeetingId}", bot.Id, id);
-
-            return ApiResponse<SendBotResponseDto>.SuccessResponse(
-                new SendBotResponseDto
+            // 1. Map frontend request to Recall.ai DTO
+            var recallRequest = new RecallBotRequest
+            {
+                MeetingUrl = request.MeetingUrl,
+                BotName = "Minutes Assistant",
+                RecordingConfig = new RecallRecordingConfig
                 {
-                    BotId     = bot.Id,
-                    MeetingId = id,
-                    Message   = "Bot is joining the meeting"
-                },
-                "Bot dispatched successfully",
-                202);
+                    Transcript = new RecallTranscriptConfig
+                    {
+                        Provider = new RecallTranscriptProvider
+                        {
+                            RecallAiStreaming = new RecallAiStreamingConfig()
+                        }
+                    }
+                }
+            };
+            // 2. Call the service
+            var response = await _recallService.CreateBotAsync(recallRequest, ct);
+
+            if (response == null || string.IsNullOrEmpty(response.Id))
+            {
+                return StatusCode(500, "Failed to create bot. No response from Recall.ai.");
+            }
+
+            // 3. Return success to frontend
+            return Ok(new SendBotResponseDto(
+                BotId: response.Id,
+                MeetingId: request.InternalMeetingId,
+                Message: "Bot is joining the meeting successfully."
+            ));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to dispatch bot for meeting {MeetingId}", id);
-            return ApiResponse<SendBotResponseDto>.FailureResponse(ex.Message, 500);
+            _logger.LogError(ex, "Error starting meeting recording");
+            return StatusCode(500, "An internal error occurred while starting the recording.");
         }
     }
-
-
-  
-
-    
 }

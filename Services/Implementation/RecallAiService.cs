@@ -1,117 +1,90 @@
+using System;
+using System.IO;
+using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Text;
+using System.Net.Http.Json;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using finalyearproject.DTOs;
 using finalyearproject.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
 
 namespace finalyearproject.Services.Implementation;
 
 public class RecallAiService : IRecallAiService
 {
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<RecallAiService> _logger;
 
+    // Your excellent JSON options setup
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
-        PropertyNamingPolicy        = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition      = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
+    // Note: Injecting HttpClient directly is perfectly safe IF registered via:
+    // builder.Services.AddHttpClient<IRecallAiService, RecallAiService>();
     public RecallAiService(
         HttpClient httpClient,
         IConfiguration configuration,
         ILogger<RecallAiService> logger)
     {
-        _httpClient    = httpClient;
-        _configuration = configuration;
-        _logger        = logger;
+        _httpClient = httpClient;
+        _logger = logger;
 
-        var apiKey  = _configuration["RecallAi:ApiKey"]
-                      ?? throw new InvalidOperationException("RecallAi:ApiKey is missing.");
-        var baseUrl = _configuration["RecallAi:BaseUrl"]
-                      ?? throw new InvalidOperationException("RecallAi:BaseUrl is missing.");
+        var apiKey = configuration["RecallAi:ApiKey"] 
+            ?? throw new InvalidOperationException("RecallAi:ApiKey is missing.");
+        var baseUrl = configuration["RecallAi:BaseUrl"] 
+            ?? throw new InvalidOperationException("RecallAi:BaseUrl is missing.");
 
         _httpClient.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Token", apiKey);
-        _httpClient.DefaultRequestHeaders.Accept.Add(
-            new MediaTypeWithQualityHeaderValue("application/json"));
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
+        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
-    // ── Create bot ────────────────────────────────────────────────────────────
-
-    public async Task<RecallBotResponse> CreateBotAsync(
-        string meetingUrl,
-        string botName = "Minutes Assistant")
+    public async Task<RecallBotResponse?> CreateBotAsync(RecallBotRequest request, CancellationToken ct = default)
     {
-        var payload = new RecallBotRequest
-        {
-            MeetingUrl = meetingUrl,
-            BotName    = botName
-        };
+        _logger.LogInformation("Creating Recall.ai bot for meeting: {MeetingUrl}", Sanitize(request.MeetingUrl));
 
-        var json    = JsonSerializer.Serialize(payload, _jsonOptions);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        using var response = await _httpClient.PostAsJsonAsync("bot/", request, _jsonOptions, ct);
+        response.EnsureSuccessStatusCode();
 
-        _logger.LogInformation(
-            "Creating Recall.ai bot for meeting URL: {MeetingUrl}", Sanitize(meetingUrl));
-
-        var response = await _httpClient.PostAsync("bot", content);
-        var body     = await response.Content.ReadAsStringAsync();
-
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"Recall.ai bot creation failed ({response.StatusCode}): {body}");
-
-        var bot = JsonSerializer.Deserialize<RecallBotResponse>(body, _jsonOptions)
-                  ?? throw new InvalidOperationException("Null response from Recall.ai bot creation.");
-
-        _logger.LogInformation("Recall.ai bot created with ID: {BotId}", bot.Id);
-        return bot;
+        return await response.Content.ReadFromJsonAsync<RecallBotResponse>(_jsonOptions, ct);
     }
 
-    // ── Get recording media links ─────────────────────────────────────────────
-
-    public async Task<RecallRecordingMedia> GetRecordingMediaAsync(string recordingId)
+    public async Task<RecallRecordingMedia?> GetRecordingMediaAsync(string recordingId, CancellationToken ct = default)
     {
-        _logger.LogInformation(
-            "Fetching media links for Recall.ai recording {RecordingId}", Sanitize(recordingId));
+        _logger.LogInformation("Fetching media metadata for recording: {RecordingId}", Sanitize(recordingId));
 
-        var response = await _httpClient.GetAsync($"recording/{recordingId}/media/");
-        var body     = await response.Content.ReadAsStringAsync();
+        using var response = await _httpClient.GetAsync($"recording/{recordingId}/", ct);
+        response.EnsureSuccessStatusCode();
 
-        if (!response.IsSuccessStatusCode)
-            throw new HttpRequestException(
-                $"Recall.ai recording media fetch failed ({response.StatusCode}): {body}");
-
-        var media = JsonSerializer.Deserialize<RecallRecordingMedia>(body, _jsonOptions)
-                    ?? throw new InvalidOperationException("Null response from Recall.ai recording media.");
-
-        return media;
+        return await response.Content.ReadFromJsonAsync<RecallRecordingMedia>(_jsonOptions, ct);
     }
 
-    // ── Download audio stream ─────────────────────────────────────────────────
-
-    public async Task<(Stream stream, string contentType, string fileName)> DownloadRecordingAudioAsync(
-        string audioUrl)
+    public async Task<(Stream Stream, string ContentType, string FileName)> DownloadRecordingAudioAsync(
+        string audioUrl, CancellationToken ct = default)
     {
-        _logger.LogInformation("Downloading audio from Recall.ai URL: {AudioUrl}", audioUrl);
+        _logger.LogInformation("Downloading audio from Recall.ai URL: {AudioUrl}", Sanitize(audioUrl));
 
-        // Use a plain GET without auth header — Recall.ai media URLs are pre-signed
         using var request = new HttpRequestMessage(HttpMethod.Get, audioUrl);
-        var response = await _httpClient.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead);
+        // Intentionally NOT adding Authorization header; Recall.ai media URLs are pre-signed.
+
+        // 1. Wrap response in 'using' to prevent socket leaks
+        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            var err = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException(
-                $"Recall.ai audio download failed ({response.StatusCode}): {err}");
+            var err = await response.Content.ReadAsStringAsync(ct);
+            throw new HttpRequestException($"Recall.ai audio download failed ({response.StatusCode}): {err}");
         }
 
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "audio/mp4";
-        var extension   = contentType switch
+        var extension = contentType switch
         {
             "audio/mpeg" => ".mp3",
             "audio/wav"  => ".wav",
@@ -120,16 +93,26 @@ public class RecallAiService : IRecallAiService
             _            => ".mp4"
         };
 
-        var stream   = await response.Content.ReadAsStreamAsync();
-        var fileName = $"recording{extension}";
+        // 2. STREAM LIFECYCLE FIX:
+        // The network stream is tied to the 'response' object. If we return it directly, 
+        // the 'using' block will dispose the response, closing the stream and causing 
+        // an ObjectDisposedException when the controller tries to read it.
+        // We must copy it to a MemoryStream (or a temp file for very large recordings).
+        using var networkStream = await response.Content.ReadAsStreamAsync(ct);
+        var memoryStream = new MemoryStream();
+        await networkStream.CopyToAsync(memoryStream, ct);
+        
+        // Reset position to 0 so the controller can read it from the beginning
+        memoryStream.Position = 0; 
 
-        return (stream, contentType, fileName);
+        var fileName = $"recording_{Guid.NewGuid():N}{extension}";
+
+        return (memoryStream, contentType, fileName);
     }
 
-    // ── Security helpers ──────────────────────────────────────────────────────
-
-    /// <summary>Strips newlines and carriage returns to prevent log-forging.</summary>
+    /// <summary>
+    /// Strips newlines and carriage returns to prevent log-forging/injection attacks.
+    /// </summary>
     private static string Sanitize(string value) =>
-        value.Replace("\r", string.Empty)
-             .Replace("\n", string.Empty);
+        value?.Replace("\r", string.Empty).Replace("\n", string.Empty) ?? string.Empty;
 }

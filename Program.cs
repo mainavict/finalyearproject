@@ -25,6 +25,11 @@ builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage,BackblazeStorage>();
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("RecallAi");
+builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30); 
+});
 
 builder.Services.AddHttpClient("Backblaze", c =>
 {

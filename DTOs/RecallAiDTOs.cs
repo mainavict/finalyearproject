@@ -1,132 +1,109 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace finalyearproject.DTOs;
 
 // ── Request sent to Recall.ai to create a bot ─────────────────────────────────
-public class RecallBotRequest
+public record RecallBotRequest
 {
     [JsonPropertyName("meeting_url")]
-    public string MeetingUrl { get; set; } = string.Empty;
+    public string MeetingUrl { get; init; } = string.Empty;
 
     [JsonPropertyName("bot_name")]
-    public string BotName { get; set; } = "Minutes Assistant";
+    public string BotName { get; init; } = "Minutes Assistant";
 
     [JsonPropertyName("recording_config")]
-    public RecallRecordingConfig RecordingConfig { get; set; } = new();
+    public RecallRecordingConfig RecordingConfig { get; init; } = new();
 }
 
-public class RecallRecordingConfig
+public record RecallRecordingConfig
 {
     [JsonPropertyName("transcript")]
-    public RecallTranscriptConfig Transcript { get; set; } = new();
+    public RecallTranscriptConfig Transcript { get; init; } = new();
 }
 
-public class RecallTranscriptConfig
+public record RecallTranscriptConfig
 {
     [JsonPropertyName("provider")]
-    public RecallTranscriptProvider Provider { get; set; } = new();
+    public RecallTranscriptProvider Provider { get; init; } = new();
 }
 
-public class RecallTranscriptProvider
+// UPDATED: Use Recall.ai's built-in streaming transcription (works out of the box)
+public record RecallTranscriptProvider
 {
-    [JsonPropertyName("assembly_ai")]
-    public object? AssemblyAi { get; set; } = new { };
+    [JsonPropertyName("recallai_streaming")]
+    public RecallAiStreamingConfig RecallAiStreaming { get; init; } = new();
+}
+
+public record RecallAiStreamingConfig
+{
+    [JsonPropertyName("mode")]
+    public string Mode { get; init; } = "prioritize_accuracy";
+
+    [JsonPropertyName("language_code")]
+    public string LanguageCode { get; init; } = "auto";
 }
 
 // ── Response from Recall.ai bot creation ─────────────────────────────────────
-public class RecallBotResponse
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+public record RecallBotResponse(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("meeting_url")] string MeetingUrl,
+    [property: JsonPropertyName("status_changes")] List<RecallStatusChange>? StatusChanges = null
+);
 
-    [JsonPropertyName("meeting_url")]
-    public string MeetingUrl { get; set; } = string.Empty;
-
-    [JsonPropertyName("status_changes")]
-    public List<RecallStatusChange>? StatusChanges { get; set; }
-}
-
-public class RecallStatusChange
-{
-    [JsonPropertyName("code")]
-    public string Code { get; set; } = string.Empty;
-
-    [JsonPropertyName("created_at")]
-    public DateTime? CreatedAt { get; set; }
-}
+public record RecallStatusChange(
+    [property: JsonPropertyName("code")] string Code,
+    [property: JsonPropertyName("created_at")] DateTime? CreatedAt = null
+);
 
 // ── DTO returned to the caller after sending the bot ─────────────────────────
-public class SendBotResponseDto
-{
-    public string BotId { get; set; } = string.Empty;
-    public Guid MeetingId { get; set; }
-    public string Message { get; set; } = string.Empty;
-}
+public record SendBotResponseDto(
+    string BotId,
+    Guid MeetingId,
+    string Message
+);
 
 // ── Recall.ai webhook payload ─────────────────────────────────────────────────
-public class RecallWebhookPayload
-{
-    [JsonPropertyName("event")]
-    public string Event { get; set; } = string.Empty;
+public record RecallWebhookPayload(
+    [property: JsonPropertyName("event")] string Event,
+    [property: JsonPropertyName("data")] RecallWebhookData? Data = null
+);
 
-    [JsonPropertyName("data")]
-    public RecallWebhookData? Data { get; set; }
-}
+public record RecallWebhookData(
+    [property: JsonPropertyName("bot")] RecallBotData? Bot = null
+);
 
-public class RecallWebhookData
-{
-    [JsonPropertyName("bot")]
-    public RecallBotData? Bot { get; set; }
-}
+public record RecallBotData(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("meeting_url")] string? MeetingUrl = null,
+    [property: JsonPropertyName("status_changes")] List<RecallStatusChange>? StatusChanges = null,
+    [property: JsonPropertyName("outputs")] RecallBotOutputs? Outputs = null
+);
 
-public class RecallBotData
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+public record RecallBotOutputs(
+    [property: JsonPropertyName("recordings")] List<RecallRecordingRef>? Recordings = null
+);
 
-    [JsonPropertyName("meeting_url")]
-    public string? MeetingUrl { get; set; }
-
-    [JsonPropertyName("status_changes")]
-    public List<RecallStatusChange>? StatusChanges { get; set; }
-
-    [JsonPropertyName("outputs")]
-    public RecallBotOutputs? Outputs { get; set; }
-}
-
-public class RecallBotOutputs
-{
-    [JsonPropertyName("recordings")]
-    public List<RecallRecordingRef>? Recordings { get; set; }
-}
-
-public class RecallRecordingRef
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
-
-    [JsonPropertyName("started_at")]
-    public DateTime? StartedAt { get; set; }
-
-    [JsonPropertyName("ends_at")]
-    public DateTime? EndsAt { get; set; }
-}
+public record RecallRecordingRef(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("started_at")] DateTime? StartedAt = null,
+    [property: JsonPropertyName("ends_at")] DateTime? EndsAt = null
+);
 
 // ── Recall.ai recording media response ───────────────────────────────────────
-public class RecallRecordingMedia
-{
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = string.Empty;
+public record RecallRecordingMedia(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("media")] RecallMediaLinks? Media = null
+);
 
-    [JsonPropertyName("media")]
-    public RecallMediaLinks? Media { get; set; }
-}
+public record RecallMediaLinks(
+    [property: JsonPropertyName("audio")] string? Audio = null,
+    [property: JsonPropertyName("video")] string? Video = null
+);
 
-public class RecallMediaLinks
-{
-    [JsonPropertyName("audio")]
-    public string? Audio { get; set; }
-
-    [JsonPropertyName("video")]
-    public string? Video { get; set; }
-}
+// ── Request from your frontend to start a meeting ───────────────────────────
+public record StartMeetingRequest(
+    string MeetingUrl,
+    Guid InternalMeetingId
+);

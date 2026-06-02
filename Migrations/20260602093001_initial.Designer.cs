@@ -13,8 +13,8 @@ using finalyearproject.Data;
 namespace finalyearproject.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260601100206_AddRecallBotIdToMeeting")]
-    partial class AddRecallBotIdToMeeting
+    [Migration("20260602093001_initial")]
+    partial class initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
