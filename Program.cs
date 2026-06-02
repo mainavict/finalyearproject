@@ -3,10 +3,24 @@ using finalyearproject.Data;
 using Scalar.AspNetCore;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.Services.Implementation;
-
+using  Microsoft.AspNetCore.Http.Features;
 
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = null; 
+});
+
+// 2. Remove Form/Multipart limits
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = long.MaxValue;
+    options.ValueLengthLimit = int.MaxValue;
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

@@ -46,12 +46,13 @@ public class BackblazeStorage : IStorage
             BucketName = _bucketName,
             Key = key,
             InputStream = stream,
-            ContentType = file.ContentType
+            ContentType = file.ContentType,
+            // ADD THIS LINE: Prevents the SDK from buffering the stream into memory
+            Headers = { ContentLength = file.Length } 
         };
 
         await _client.PutObjectAsync(request);
-
-        return key; // store this in DB
+        return key; 
     }
 
     public string GetFileUrl(string fileKey)

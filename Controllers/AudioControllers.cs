@@ -17,6 +17,7 @@ public class AudioControllers : ControllerBase
     
     
     [HttpPost("upload")]
+    [DisableRequestSizeLimit]
     public async Task<ApiResponse<AudioFile>> Upload(Guid meetingId,IFormFile file)
     {
         var result = await _audio.UploadAsync(meetingId,file);

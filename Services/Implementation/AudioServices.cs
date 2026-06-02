@@ -31,10 +31,15 @@ public class AudioServices: IAudio
         }
         
         ValidateAudio(file);
+        
+        _logger.LogInformation("Starting upload for {FileName}, size={Size}",
+            file.FileName,
+            file.Length);
 
         var fileKey = await _storage.UploadAsync(file, "audio");
         var fileUrl = _storage.GetFileUrl(fileKey);
-
+        
+        _logger.LogInformation("Storage upload completed");
 
         var audio = new AudioFile
         {
