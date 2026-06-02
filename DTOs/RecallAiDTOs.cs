@@ -45,10 +45,11 @@ public record RecallAiStreamingConfig
     public string LanguageCode { get; init; } = "auto";
 }
 
-// ── Response from Recall.ai bot creation ─────────────────────────────────────
 public record RecallBotResponse(
     [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("meeting_url")] string MeetingUrl,
+
+    [property: JsonPropertyName("meeting_url")] object? MeetingUrl = null,
+    
     [property: JsonPropertyName("status_changes")] List<RecallStatusChange>? StatusChanges = null
 );
 
