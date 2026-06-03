@@ -33,7 +33,7 @@ public class TranscriptionWorker : BackgroundService
 
                 // Find ONE pending audio file to process
                 var pendingAudio = await context.AudioFiles
-                    .FirstOrDefaultAsync(a => a.Status == stutus.pending, stoppingToken);
+                    .FirstOrDefaultAsync(a => a.Status == stutus.prossesing , stoppingToken);
                 
 
                 if (pendingAudio != null)

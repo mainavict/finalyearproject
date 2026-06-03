@@ -8,7 +8,9 @@ public  enum  stutus
     pending,
     prossesing,
     failed,
-    transcribed
+    transcribed,
+    minutesgenerated,
+    minutesgenerationfailed
 }
 
 

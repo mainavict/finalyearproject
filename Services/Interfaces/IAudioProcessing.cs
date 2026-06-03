@@ -3,7 +3,7 @@
 
 namespace finalyearproject.Services.Interfaces;
 
-public interface IAudioProcessing
+public interface IAudioProcessingService
 {
-    
+    Task ProcessAudioAsync(Guid audioId);
 }
