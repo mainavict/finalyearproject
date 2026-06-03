@@ -15,4 +15,5 @@ public Guid UserId { get; set; } =  Guid.NewGuid();
     public  string PasswordHash = String.Empty;
     public bool IsDeleted { get; set; } = false;
 
+    public ICollection<Meeting> Meetings { get; set; }
 }

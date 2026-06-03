@@ -26,7 +26,7 @@ public class GroqTranscriptionService : ITranscriber
         return await TranscribeFromStreamAsync(stream, Path.GetFileName(filePath));
     }
 
-    // ─── New: stream from B2 ─────────────────────────────────────────────────
+  
 
     public async Task<string> TranscribeFromStreamAsync(
         Stream audioStream,
@@ -63,8 +63,7 @@ public class GroqTranscriptionService : ITranscriber
             .GetProperty("text")
             .GetString()!;
     }
-
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    
 
     private static string GetMimeType(string fileName) =>
         Path.GetExtension(fileName).ToLowerInvariant() switch

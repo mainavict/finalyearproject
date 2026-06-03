@@ -26,4 +26,6 @@ public class AudioFile
     public string ContentType { get; set; }
     public long FileSize { get; set; }
     public stutus Status { get; set; } = stutus.pending;
+    
+    public Meeting Meeting { get; set; }
 }

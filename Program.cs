@@ -61,8 +61,24 @@ builder.Services.AddHttpClient("Groq", c =>
 builder.Services.AddHttpClient<Iminutes, MinutesServices>();
 // Program.cs
 builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
-builder.Services.AddHttpClient<ITranscriber, GroqTranscriptionService>();
-builder.Services.AddControllers();
+builder.Services.AddHttpClient<ITranscriber, GroqTranscriptionService>(
+    client =>
+    {
+        client.Timeout = TimeSpan.FromMinutes(10);
+    }
+    );
+builder.Services.AddScoped<IAudioProcessingService, 
+    AudioProcessingService>();
+builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
+  
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // This tells .NET to ignore circular references instead of crashing
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    
+    // Optional: Makes the JSON output nicely formatted (easier to read in Postman/Browser)
+    options.JsonSerializerOptions.WriteIndented = true;
+});
 
 builder.Services.AddCors(options =>
 {
@@ -73,6 +89,9 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
+
+
+
 
 var app = builder.Build();
 

@@ -41,4 +41,5 @@ public class Meeting
     public User Creator { get; set; } = null!;
     public Transcript? Transcript { get; set; }
     public Minutes? Minutes { get; set; }
+    public ICollection<AudioFile> AudioFiles { get; set; }
 }

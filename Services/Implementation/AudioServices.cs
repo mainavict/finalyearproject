@@ -2,8 +2,7 @@ using finalyearproject.Data;
 using finalyearproject.Services.Interfaces;
 using  finalyearproject.Models;
 using finalyearproject.Wrappers;
-using Microsoft.EntityFrameworkCore; // <-- Add this line!
-
+using Microsoft.EntityFrameworkCore; 
 namespace finalyearproject.Services.Implementation;
 
 public class AudioServices: IAudio
@@ -107,6 +106,37 @@ public class AudioServices: IAudio
 
         _logger.LogInformation("{Count} audio files retrieved", audioFiles.Count);
         return ApiResponse<List<AudioFile>>.SuccessResponse(audioFiles,message: "Audio files retrieved successfully",statusCode: 200);
+    }
+
+    public async Task<ApiResponse<List<AudioFile>>> GetAllAudioFileByUserIdAsync(Guid id)
+    {
+        var user =await _context.Users.FirstAsync(u=>u.UserId == id);
+
+        if (user == null)
+        {
+            _logger.LogWarning("User with id {UserId} not found", id);
+            
+            return ApiResponse<List<AudioFile>>.FailureResponse("Audio file not found",404);
+        }
+        
+        var audioFiles = await _context.AudioFiles
+            .Where(a => a.Meeting.CreatorId == user.UserId)
+            .Select(a => new AudioFile
+            {
+                Id = a.Id,
+                MeetingId = a.MeetingId,
+                FileName = a.FileName,
+                FilePath = a.FileName,
+                FileUrl = a.FileUrl,
+                ContentType = a.ContentType,
+                Status = stutus.pending
+            })
+            .ToListAsync();
+        
+        
+   
+        return ApiResponse<List<AudioFile>>.SuccessResponse(audioFiles,"Audio files retrived successfully",statusCode:200);
+        
     }
     
 }
