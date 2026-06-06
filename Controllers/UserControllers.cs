@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace finalyearproject.Controllers;
 [Route("api/[controller]")]
 [ApiController]
-// [Authorize]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUsers _userService;

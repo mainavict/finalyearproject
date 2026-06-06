@@ -164,6 +164,12 @@ public class MeetingServices:Imeeting
            return ApiResponse<ResponseMeetingDto>.FailureResponse("User not found", 404);
        }
 
+       if (meeting.CreatorId != user.UserId)
+       {
+           _logger.LogWarning("User details   dont  match   the  meeting  details  ");
+           return ApiResponse<ResponseMeetingDto>.FailureResponse("You are not authorized to update this meeting",403);
+       }
+
        if (!string.IsNullOrEmpty(updateDto.Title))
        {
            meeting.Title = updateDto.Title;

@@ -18,7 +18,7 @@ namespace finalyearproject.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-// [Authorize]
+[Authorize]
 public class MeetingControllers : ControllerBase
 {
 
@@ -68,9 +68,9 @@ public class MeetingControllers : ControllerBase
         return result;
     }
 
-    [HttpGet("user/{createrid}")]
+    [HttpGet("{my-meetings}")]
 
-    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMeetingsByUserIdAsync()
+    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMyMeetingsAsync()
     {
         
         Guid currentUserId = User.GetUserId(); 
@@ -79,10 +79,11 @@ public class MeetingControllers : ControllerBase
     }
 
     [HttpPut]
-    public async Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingAsync(Guid meetingId, UpdateMeetingDto updateDto,
-        Guid userId)
+    public async Task<ApiResponse<ResponseMeetingDto>> UpdateMeetingAsync(Guid meetingId, UpdateMeetingDto updateDto
+        )
     {
-        var result = await _meetingService.UpdateMeetingAsync(meetingId, updateDto, userId);
+        Guid currentUserId = User.GetUserId(); 
+        var result = await _meetingService.UpdateMeetingAsync(meetingId, updateDto, currentUserId);
         return result;
     }
 
