@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using finalyearproject.Data;
 using finalyearproject.Models;
 using finalyearproject.Services.Interfaces;
-
+using   finalyearproject.Hubs;
+using Microsoft.AspNetCore.SignalR;
 namespace finalyearproject.Services.Implementation;
 
 public class AudioProcessingService : IAudioProcessingService
@@ -12,19 +13,22 @@ public class AudioProcessingService : IAudioProcessingService
     private readonly IBackblazeB2Service _b2Service;
     private readonly Iminutes _minutesService; 
     private readonly ILogger<AudioProcessingService> _logger;
+    private readonly IHubContext<NotificationHub> _hubContext;
 
     public AudioProcessingService(
         AppDbContext context, 
         ITranscriber transcriber, 
         IBackblazeB2Service b2Service, 
         Iminutes minutesService, 
+        IHubContext<NotificationHub> hubContext,
         ILogger<AudioProcessingService> logger)
     {
         _context = context;
         _transcriber = transcriber;
         _b2Service = b2Service;
         _minutesService = minutesService; 
-        _logger = logger;
+        _logger = logger; 
+        _hubContext = hubContext;
     }
 
     public async Task ProcessAudioAsync(Guid audioId)
@@ -118,6 +122,23 @@ public class AudioProcessingService : IAudioProcessingService
             await _context.SaveChangesAsync();
             
             _logger.LogInformation("Successfully processed audio and generated minutes for {AudioId}", audioId);
+            
+            
+            var meeting = await _context.Meetings.FirstOrDefaultAsync(m => m.Id == audio.MeetingId);
+            if (meeting != null)
+            {
+                var userId = meeting.CreatorId.ToString();
+                
+                await _hubContext.Clients.User(userId).SendAsync("ReceiveTranscriptionUpdate", new 
+                { meetingtitle = meeting.Title,
+                    audioId = audio.Id,
+                    meetingId = audio.MeetingId,
+                    status = "Completed",
+                    message = "Your meeting minutes are ready to view!"
+                });
+                
+                _logger.LogInformation("Sent real-time notification to user {UserId}", userId);
+            }
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
         {

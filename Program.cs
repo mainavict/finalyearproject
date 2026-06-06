@@ -47,7 +47,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
-
+builder.Services.AddSignalR();
 // ── Controllers & OpenAPI ────────────────────────────────────────────────────
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -160,5 +160,5 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
+app.MapHub<finalyearproject.Hubs.NotificationHub>("/hubs/notifications");
 app.Run();
