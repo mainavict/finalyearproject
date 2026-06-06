@@ -3,10 +3,13 @@ using finalyearproject.Services.Interfaces;
 using finalyearproject.DTOs;
 using finalyearproject.Wrappers;
 using  finalyearproject.Models;
+using   finalyearproject.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 namespace finalyearproject.Controllers;
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AudioControllers : ControllerBase
 {
     private  readonly IAudio _audio;
@@ -26,9 +29,10 @@ public class AudioControllers : ControllerBase
     }
 
     [HttpGet("user/{id}")]
-    public async Task<ApiResponse<List<AudioFile>>> GetAllAudioFileByUserIdAsync(Guid id)
+    public async Task<ApiResponse<List<AudioFile>>> GetAllAudioFileByUserIdAsync()
     {
-        var result = await _audio.GetAllAudioFileByUserIdAsync(id);
+        Guid currentUserId = User.GetUserId(); 
+        var result = await _audio.GetAllAudioFileByUserIdAsync(currentUserId);
 
         return result;
     }

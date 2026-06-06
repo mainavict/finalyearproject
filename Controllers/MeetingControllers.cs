@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Authorization;
+using   finalyearproject.Extensions;
 
 
 namespace finalyearproject.Controllers;
@@ -41,9 +42,11 @@ public class MeetingControllers : ControllerBase
 
 
     [HttpPost]
-    public async Task<ApiResponse<ResponseMeetingDto>> CreateMeeting([FromBody] CreateMeetingDto createDto, Guid userId)
+    public async Task<ApiResponse<ResponseMeetingDto>> CreateMeeting([FromBody] CreateMeetingDto createDto)
     {
-        var result = await _meetingService.CreateMeetingAsync(createDto, userId);
+        Guid currentUserId = User.GetUserId(); 
+        
+        var result = await _meetingService.CreateMeetingAsync(createDto, currentUserId );
         return result;
     }
 
@@ -67,9 +70,11 @@ public class MeetingControllers : ControllerBase
 
     [HttpGet("user/{createrid}")]
 
-    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMeetingsByUserIdAsync(Guid userId)
+    public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMeetingsByUserIdAsync()
     {
-        var result = await _meetingService.GetMeetingsByUserIdAsync(userId);
+        
+        Guid currentUserId = User.GetUserId(); 
+        var result = await _meetingService.GetMeetingsByUserIdAsync(currentUserId );
         return result;
     }
 
@@ -82,9 +87,11 @@ public class MeetingControllers : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<ApiResponse<bool>> DeleteMeetingAsync(Guid meetingId, Guid userId)
+    public async Task<ApiResponse<bool>> DeleteMeetingAsync(Guid meetingId)
     {
-        var result = await _meetingService.DeleteMeetingAsync(meetingId, userId);
+        Guid currentUserId = User.GetUserId(); 
+        
+        var result = await _meetingService.DeleteMeetingAsync(meetingId, currentUserId);
         return result;
     }
 
