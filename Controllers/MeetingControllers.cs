@@ -10,12 +10,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
 
 
 namespace finalyearproject.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// [Authorize]
 public class MeetingControllers : ControllerBase
 {
 

@@ -3,113 +3,161 @@ using finalyearproject.Data;
 using Scalar.AspNetCore;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.Services.Implementation;
-using  Microsoft.AspNetCore.Http.Features;
-
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
+// ── Kestrel / Form limits ────────────────────────────────────────────────────
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.Limits.MaxRequestBodySize = null; 
+    serverOptions.Limits.MaxRequestBodySize = null;
 });
 
-// 2. Remove Form/Multipart limits
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = long.MaxValue;
     options.ValueLengthLimit = int.MaxValue;
 });
 
-builder.Services.AddControllers();
+// ── JWT (must be BEFORE builder.Build()) ─────────────────────────────────────
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"]
+    ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured.");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer           = true,
+        ValidateAudience         = true,
+        ValidateLifetime         = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer              = jwtSettings["Issuer"],
+        ValidAudience            = jwtSettings["Audience"],
+        IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// ── Controllers & OpenAPI ────────────────────────────────────────────────────
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler =
+        System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.WriteIndented = true;
+});
+
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Components ??= new Microsoft.OpenApi.Models.OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, Microsoft.OpenApi.Models.OpenApiSecurityScheme>();
+        
+        document.Components.SecuritySchemes.Add("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token",
+            Name = "Authorization",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
 
+        document.SecurityRequirements ??= new List<Microsoft.OpenApi.Models.OpenApiSecurityRequirement>();
+        document.SecurityRequirements.Add(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
 
+        return Task.CompletedTask;
+    });
+});
 
-// 1. Registers the .NET 9 OpenAPI generator
-builder.Services.AddOpenApi(); 
-
+// ── Database ─────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-
+// ── Application Services ─────────────────────────────────────────────────────
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsers, UserServices>();
 builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
-builder.Services.AddScoped<IStorage,BackblazeStorage>();
-builder.Services.AddHttpClient<IRecallAiService, RecallAiService>();
-builder.Services.AddHttpClient();
-builder.Services.AddHttpClient("RecallAi");
+builder.Services.AddScoped<IStorage, BackblazeStorage>();
+builder.Services.AddScoped<IAudioProcessingService, AudioProcessingService>();
+builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
+
+// ── HTTP Clients ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30); 
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddHttpClient("Backblaze", c =>
 {
-    c.Timeout = TimeSpan.FromMinutes(10);  // large files take time
+    c.Timeout = TimeSpan.FromMinutes(10);
 });
 
-// Client for Groq API
 builder.Services.AddHttpClient("Groq", c =>
 {
     c.BaseAddress = new Uri("https://api.groq.com");
     c.Timeout     = TimeSpan.FromMinutes(10);
 });
 
-// Register transcription service
-builder.Services.AddHttpClient<Iminutes, MinutesServices>();
-// Program.cs
-builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
-builder.Services.AddHttpClient<ITranscriber, GroqTranscriptionService>(
-    client =>
-    {
-        client.Timeout = TimeSpan.FromMinutes(10);
-    }
-    );
-builder.Services.AddScoped<IAudioProcessingService, 
-    AudioProcessingService>();
-builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
-  
-builder.Services.AddControllers().AddJsonOptions(options =>
+builder.Services.AddHttpClient<ITranscriber, AssemblyAITranscriptionService>(client =>
 {
-    // This tells .NET to ignore circular references instead of crashing
-    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    
-    // Optional: Makes the JSON output nicely formatted (easier to read in Postman/Browser)
-    options.JsonSerializerOptions.WriteIndented = true;
+    client.Timeout = TimeSpan.FromMinutes(20);
 });
 
+builder.Services.AddHttpClient<Iminutes, MinutesServices>();
+builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
-
-
-
+// ═══════════════════════════════════════════════════════════════════════════════
 var app = builder.Build();
+// ═══════════════════════════════════════════════════════════════════════════════
 
-if (app.Environment.IsDevelopment()|| app.Environment.IsProduction() )
+if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
-    // 2. Maps the /openapi/v1.json endpoint
-    app.MapOpenApi(); 
-    
-    // 3. Maps the Scalar UI (which reads the endpoint above)
-      app.MapScalarApiReference(options => 
-        {
-            options.WithTitle("finalyearproject")
-                .WithTheme(ScalarTheme.Moon) // Try 'Purple', 'Solarized', or 'DeepSpace'
-                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-        });
-    }
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("finalyearproject")
+               .WithTheme(ScalarTheme.Moon)
+               .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+        
+        
+    });
+}
+
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

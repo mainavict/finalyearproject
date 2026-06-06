@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.DTOs;
 using finalyearproject.Wrappers;
+using Microsoft.AspNetCore.Authorization;
 
 namespace finalyearproject.Controllers;
 [Route("api/[controller]")]
 [ApiController]
+// [Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUsers _userService;

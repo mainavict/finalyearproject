@@ -557,3 +557,12 @@ C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\refint\finalyearpro
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.pdb
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\finalyearproject.genruntimeconfig.cache
 C:\Users\victor\Developent\finalyearproject\obj\Debug\net9.0\ref\finalyearproject.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.Bcl.Cryptography.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll

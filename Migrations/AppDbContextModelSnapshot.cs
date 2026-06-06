@@ -369,6 +369,10 @@ namespace finalyearproject.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("UserId");
 
                     b.HasIndex("Email")

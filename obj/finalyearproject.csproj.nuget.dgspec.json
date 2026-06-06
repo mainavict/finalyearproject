@@ -62,6 +62,10 @@
               "target": "Package",
               "version": "[4.1.0, )"
             },
+            "Microsoft.AspNetCore.Authentication.JwtBearer": {
+              "target": "Package",
+              "version": "[9.*, )"
+            },
             "Microsoft.AspNetCore.OpenApi": {
               "target": "Package",
               "version": "[9.0.*, )"
@@ -83,6 +87,10 @@
             "Scalar.AspNetCore": {
               "target": "Package",
               "version": "[2.13.17, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.19.1, )"
             },
             "Whisper.net": {
               "target": "Package",

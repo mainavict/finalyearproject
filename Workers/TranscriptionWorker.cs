@@ -24,23 +24,19 @@ public class TranscriptionWorker : BackgroundService
         {
             try
             {
-                // IMPORTANT: BackgroundServices run outside of HTTP requests.
-                // We MUST create a new Dependency Injection scope to use the DbContext.
                 using var scope = _serviceProvider.CreateScope();
                 
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var processor = scope.ServiceProvider.GetRequiredService<IAudioProcessingService>();
-
-                // Find ONE pending audio file to process
+                
                 var pendingAudio = await context.AudioFiles
-                    .FirstOrDefaultAsync(a => a.Status == stutus.prossesing , stoppingToken);
+                    .FirstOrDefaultAsync(a => a.Status == stutus.pending , stoppingToken);
                 
 
                 if (pendingAudio != null)
                 {
                     _logger.LogInformation("Worker found pending audio: {AudioId}", pendingAudio.Id);
-                    
-                    // Hand it over to the Manager Service
+               
                     await processor.ProcessAudioAsync(pendingAudio.Id);
                 }
             }
@@ -48,8 +44,6 @@ public class TranscriptionWorker : BackgroundService
             {
                 _logger.LogError(ex, "Error occurred in TranscriptionWorker.");
             }
-
-            // Wait 5 seconds before checking the database again
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
     }
