@@ -35,9 +35,7 @@ public class BackblazeStorage : IStorage
             .Replace(")", "");
 
         var extension = Path.GetExtension(file.FileName);
-
         var key = $"{folder}/{Guid.NewGuid()}_{safeFileName}{extension}";
-
 
         using var stream = file.OpenReadStream();
 
@@ -47,12 +45,26 @@ public class BackblazeStorage : IStorage
             Key = key,
             InputStream = stream,
             ContentType = file.ContentType,
-            // ADD THIS LINE: Prevents the SDK from buffering the stream into memory
-            Headers = { ContentLength = file.Length } 
+            Headers = { ContentLength = file.Length }
         };
 
         await _client.PutObjectAsync(request);
-        return key; 
+        return key;
+    }
+
+    public async Task<string> GetPresignedUploadUrlAsync(string key, string contentType, int expirationMinutes = 15)
+    {
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            Verb = HttpVerb.PUT,
+            Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+            ContentType = contentType
+        };
+
+        var presignedUrl = await _client.GetPreSignedURLAsync(request);
+        return presignedUrl;
     }
 
     public string GetFileUrl(string fileKey)

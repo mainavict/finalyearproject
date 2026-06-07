@@ -139,4 +139,16 @@ public class AudioServices: IAudio
         
     }
     
+    public async Task<ApiResponse<AudioFile>> CreateAudioRecordAsync(AudioFile audioFile)
+    {
+        _context.AudioFiles.Add(audioFile);
+        await _context.SaveChangesAsync();
+    
+        return ApiResponse<AudioFile>.SuccessResponse(
+            audioFile, 
+            "Audio record created successfully", 
+            201
+        );
+    }
+    
 }
