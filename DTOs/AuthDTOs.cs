@@ -13,13 +13,22 @@ public class LoginDto
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
 }
-    public class AuthResponseDto
-    {
-        public string Token { get; set; } = string.Empty;
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public Guid? UserId { get; set; }
-    }
+public class UserSessionDto
+{
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
+
+public class AuthResponseDto
+{
+    public string Token { get; set; } = string.Empty;
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public Guid? UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}
 
     public class RefreshTokenRequest
     {

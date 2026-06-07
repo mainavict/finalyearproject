@@ -34,6 +34,22 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // 🔧 UPDATED: Read JWT from the cookie that Next.js sets
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            // Read token from the cookie that Next.js proxy sets
+            // ⚠️ IMPORTANT: Change "auth-token" to match your AUTH_COOKIE value in Next.js lib/auth.ts
+            var accessToken = context.Request.Cookies["auth_token"];
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer           = true,
@@ -48,6 +64,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+
 // ── Controllers & OpenAPI ────────────────────────────────────────────────────
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
@@ -104,7 +121,7 @@ builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage, BackblazeStorage>();
 builder.Services.AddScoped<IAudioProcessingService, AudioProcessingService>();
-builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
+ builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
 
 // ── HTTP Clients ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
@@ -134,8 +151,14 @@ builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        // ✅ Allow your Next.js frontend
+        policy.WithOrigins("http://localhost:3000") 
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -150,13 +173,11 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
         options.WithTitle("finalyearproject")
                .WithTheme(ScalarTheme.Moon)
                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-        
-        
     });
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

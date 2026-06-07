@@ -40,7 +40,6 @@ public class AuthService : IAuthService
             IsActive = true
         };
 
-        // Securely hash the password
         user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
 
         _context.Users.Add(user);
@@ -53,7 +52,9 @@ public class AuthService : IAuthService
             Success = true, 
             Message = "Registration successful!", 
             Token = token,
-            UserId = user.UserId
+            UserId = user.UserId,
+            FullName = user.FullName,
+            Email = user.Email
         };
     }
 
@@ -66,7 +67,6 @@ public class AuthService : IAuthService
             return new AuthResponseDto { Success = false, Message = "Invalid email or password." };
         }
 
-        // Verify the hashed password
         var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
 
         if (result == PasswordVerificationResult.Failed)
@@ -86,7 +86,9 @@ public class AuthService : IAuthService
             Success = true, 
             Message = "Login successful!", 
             Token = token,
-            UserId = user.UserId
+            UserId = user.UserId,
+            FullName = user.FullName,
+            Email = user.Email
         };
     }
 
