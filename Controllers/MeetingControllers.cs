@@ -68,7 +68,7 @@ public class MeetingControllers : ControllerBase
         return result;
     }
 
-    [HttpGet("{my-meetings}")]
+    [HttpGet("my-meetings")]
 
     public async Task<ApiResponse<IEnumerable<ResponseMeetingDto>>> GetMyMeetingsAsync()
     {
