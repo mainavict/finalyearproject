@@ -121,7 +121,7 @@ builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage, BackblazeStorage>();
 builder.Services.AddScoped<IAudioProcessingService, AudioProcessingService>();
-builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
+//builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
 
 // ── HTTP Clients ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
@@ -154,7 +154,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         // ✅ Allow your Next.js frontend
-        policy.WithOrigins("http://localhost:3000") 
+        policy.WithOrigins("http://localhost:3000 ","https://minutesapp.vercel.app/") 
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials();
