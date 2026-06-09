@@ -34,14 +34,19 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    // 🔧 UPDATED: Read JWT from the cookie that Next.js sets
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
-            // Read token from the cookie that Next.js proxy sets
-            // ⚠️ IMPORTANT: Change "auth-token" to match your AUTH_COOKIE value in Next.js lib/auth.ts
+            // First try cookie
             var accessToken = context.Request.Cookies["auth_token"];
+            
+            // If not in cookie, try query string (for SignalR)
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                accessToken = context.Request.Query["access_token"];
+            }
+            
             if (!string.IsNullOrEmpty(accessToken))
             {
                 context.Token = accessToken;
@@ -52,13 +57,13 @@ builder.Services.AddAuthentication(options =>
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer           = true,
-        ValidateAudience         = true,
-        ValidateLifetime         = true,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer              = jwtSettings["Issuer"],
-        ValidAudience            = jwtSettings["Audience"],
-        IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 });
 
