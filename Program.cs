@@ -131,7 +131,7 @@ builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
 
 builder.Services.AddHttpClient("Backblaze", c =>
 {
-     c.Timeout = TimeSpan.FromMinutes(10);
+    c.Timeout = TimeSpan.FromMinutes(10);
 });
 
 builder.Services.AddHttpClient("Groq", c =>
