@@ -147,6 +147,7 @@ builder.Services.AddHttpClient<ITranscriber, AssemblyAITranscriptionService>(cli
 
 builder.Services.AddHttpClient<Iminutes, MinutesServices>();
 builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
