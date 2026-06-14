@@ -23,7 +23,7 @@ public class MeetingSchedulerWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("📅 Meeting Scheduler Worker started.");
+        _logger.LogInformation("📅 Meeting Scheduler Worker started. Checking every 30 seconds...");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -35,32 +35,33 @@ public class MeetingSchedulerWorker : BackgroundService
 
                 var now = DateTime.UtcNow;
 
-                // Find meetings scheduled in the next 2 minutes that are in "Scheduled" status
-                // and have a MeetingUrl (Zoom/Teams/Meet link)
+                // ✅ EXPANDED WINDOW: Looks 24 hours in the past and 24 hours in the future
+                // This ensures we don't miss meetings if the server was asleep or restarted.
                 var upcomingMeetings = await context.Meetings
                     .Where(m =>
                         m.ScheduledAt != null &&
-                        m.ScheduledAt <= now.AddMinutes(2) &&
-                        m.ScheduledAt >= now.AddMinutes(-1) &&
+                        m.ScheduledAt <= now.AddHours(24) &&
+                        m.ScheduledAt >= now.AddHours(-24) && 
                         m.Status == MeetingStatus.Scheduled &&
                         m.RecallBotId == null && // Bot not yet deployed
-                        !string.IsNullOrEmpty(m.AudioUrl)) // Has a meeting URL
+                        !string.IsNullOrEmpty(m.MeetingUrl)) // Has a meeting URL
+                    .OrderBy(m => m.ScheduledAt) // Process oldest first
                     .ToListAsync(stoppingToken);
 
                 if (upcomingMeetings.Any())
                 {
-                    _logger.LogInformation("🔔 Found {Count} meetings to trigger bots for.", upcomingMeetings.Count);
+                    _logger.LogInformation("Found {Count} meetings ready for bot deployment.", upcomingMeetings.Count);
 
                     foreach (var meeting in upcomingMeetings)
                     {
-                        _logger.LogInformation("🤖 Triggering bot for meeting: {Title} at {Time}",
-                            meeting.Title, meeting.ScheduledAt);
+                        _logger.LogInformation("Triggering bot for meeting: '{Title}' (ID: {Id}) at {Time}",
+                            meeting.Title, meeting.Id, meeting.ScheduledAt);
 
                         try
                         {
                             var botRequest = new RecallBotRequest
                             {
-                                MeetingUrl = meeting.MeetingUrl!, // This is the Zoom/Teams link
+                                MeetingUrl = meeting.MeetingUrl!,
                                 BotName = "MeetingMind",
                                 RecordingConfig = new RecallRecordingConfig
                                 {
@@ -74,35 +75,46 @@ public class MeetingSchedulerWorker : BackgroundService
                                 }
                             };
 
+                            _logger.LogInformation("📞 Calling Recall.ai API for meeting {MeetingId}...", meeting.Id);
+                            
                             var response = await recallService.CreateBotAsync(botRequest, stoppingToken);
 
                             if (response != null && !string.IsNullOrEmpty(response.Id))
                             {
                                 meeting.RecallBotId = response.Id;
                                 meeting.Status = MeetingStatus.Recording;
-                                _logger.LogInformation("✅ Bot joined! BotId: {BotId}", response.Id);
+                                meeting.UpdatedAt = DateTime.UtcNow;
+                                await context.SaveChangesAsync(stoppingToken);
+                                _logger.LogInformation("✅ SUCCESS! Bot joined. BotId: {BotId}", response.Id);
                             }
                             else
                             {
                                 meeting.Status = MeetingStatus.Failed;
-                                _logger.LogWarning("⚠️ Bot creation returned empty response.");
+                                meeting.UpdatedAt = DateTime.UtcNow;
+                                await context.SaveChangesAsync(stoppingToken);
+                                _logger.LogWarning("⚠️ Bot creation returned empty response for meeting {Id}.", meeting.Id);
                             }
                         }
                         catch (Exception ex)
                         {
                             meeting.Status = MeetingStatus.Failed;
-                            _logger.LogError(ex, "❌ Failed to trigger bot for meeting {MeetingId}", meeting.Id);
+                            meeting.UpdatedAt = DateTime.UtcNow;
+                            await context.SaveChangesAsync(stoppingToken);
+                            _logger.LogError(ex, "❌ FAILED to trigger bot for meeting {Id}. Error: {Message}", meeting.Id, ex.Message);
                         }
                     }
-
-                    await context.SaveChangesAsync(stoppingToken);
+                }
+                else
+                {
+                    _logger.LogDebug("No scheduled meetings found in the time window.");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in Meeting Scheduler Worker loop.");
+                _logger.LogError(ex, "Critical error in Meeting Scheduler Worker loop.");
             }
 
+            // Wait 30 seconds before checking again
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
     }
