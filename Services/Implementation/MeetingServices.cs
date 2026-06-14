@@ -18,50 +18,60 @@ public class MeetingServices:Imeeting
     }
     
     public async Task<ApiResponse<ResponseMeetingDto>> CreateMeetingAsync(CreateMeetingDto createDto, Guid userId)
-    {
-        _logger.LogInformation("CreateMeetingAsync called");
-        
-        var  user  = await  _context.Users.FindAsync(userId);
-        if (user == null) {
-            _logger.LogWarning("User with id {UserId} not found", userId);
-            return ApiResponse<ResponseMeetingDto>.FailureResponse("User not found",404);
-        }
-        
-        var newMeeting = new Models.Meeting
-        {
-            Title = createDto.Title,
-            Description = createDto.Description,
-            ScheduledAt = createDto.ScheduledAt,
-            CreatedAt = DateTime.UtcNow,
-            CreatorId = userId,
-        };
-        
-        _context.Meetings.Add(newMeeting);
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("CreateMeetingAsync completed");
-        
-        
-        
-        var  response =  new ResponseMeetingDto
-        {
-            Id = newMeeting.Id,
-            Title = newMeeting.Title,
-            Description = newMeeting.Description,
-           Status = newMeeting.Status.ToString(),
-            CreatedBy = newMeeting.CreatorId,
-            ApprovedAt = newMeeting.ApprovedAt,
-             ApprovedBy = newMeeting.ApprovedBy,
-            AudioUrl = newMeeting.AudioUrl,
-            ScheduledAt = newMeeting.ScheduledAt,
-            EndedAt = newMeeting.EndedAt,
-            AudioDurationSecs = newMeeting.AudioDurationSecs,
-            
-            CreatedAt = newMeeting.CreatedAt
-        };
-        
-        return ApiResponse<ResponseMeetingDto>.SuccessResponse(response,"Meeting created successfully",201);
-        
+{
+    _logger.LogInformation("CreateMeetingAsync called");
+    
+    var user = await _context.Users.FindAsync(userId);
+    if (user == null) {
+        _logger.LogWarning("User with id {UserId} not found", userId);
+        return ApiResponse<ResponseMeetingDto>.FailureResponse("User not found", 404);
     }
+    
+    var newMeeting = new Models.Meeting
+    {
+        Title = createDto.Title,
+        Description = createDto.Description,
+        ScheduledAt = createDto.ScheduledAt,
+        CreatedAt = DateTime.UtcNow,
+        UpdatedAt = DateTime.UtcNow,
+        CreatorId = userId,
+        
+        // ✅ Store meeting URL separately
+        MeetingUrl = createDto.MeetingUrl,
+        
+        // ✅ Set status based on bot deployment
+        Status = createDto.DeployBot ? Models.MeetingStatus.Scheduled : Models.MeetingStatus.Created
+    };
+    
+    _context.Meetings.Add(newMeeting);
+    await _context.SaveChangesAsync();
+    
+    _logger.LogInformation(
+        "Meeting created: {MeetingId}, Bot deployment: {DeployBot}, Status: {Status}",
+        newMeeting.Id, 
+        createDto.DeployBot,
+        newMeeting.Status
+    );
+    
+    var response = new ResponseMeetingDto
+    {
+        Id = newMeeting.Id,
+        Title = newMeeting.Title,
+        Description = newMeeting.Description,
+        Status = newMeeting.Status.ToString(),
+        CreatedBy = newMeeting.CreatorId,
+        ApprovedAt = newMeeting.ApprovedAt,
+        ApprovedBy = newMeeting.ApprovedBy,
+        MeetingUrl = newMeeting.MeetingUrl, // ✅ Add this to your ResponseMeetingDto
+        AudioUrl = newMeeting.AudioUrl,
+        ScheduledAt = newMeeting.ScheduledAt,
+        EndedAt = newMeeting.EndedAt,
+        AudioDurationSecs = newMeeting.AudioDurationSecs,
+        CreatedAt = newMeeting.CreatedAt
+    };
+    
+    return ApiResponse<ResponseMeetingDto>.SuccessResponse(response, "Meeting created successfully", 201);
+}
 
     public  async Task<ApiResponse<ResponseMeetingDto>> GetMeetingByIdAsync(Guid meetingId)
     {

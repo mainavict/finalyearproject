@@ -107,7 +107,7 @@ public class MeetingControllers : ControllerBase
             var recallRequest = new RecallBotRequest
             {
                 MeetingUrl = request.MeetingUrl,
-                BotName = "Minutes Assistant",
+                BotName = "MeetingMind",
                 RecordingConfig = new RecallRecordingConfig
                 {
                     Transcript = new RecallTranscriptConfig

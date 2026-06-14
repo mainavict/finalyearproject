@@ -47,7 +47,7 @@ public class RecallWebhookController : ControllerBase
 
         if (string.IsNullOrEmpty(msgId) || string.IsNullOrEmpty(msgTimestamp) || string.IsNullOrEmpty(msgSignature))
         {
-            _logger.LogWarning("❌ Missing verification headers. Found -> ID: {Id}, Timestamp: {Ts}, Signature: {Sig}", 
+            _logger.LogWarning("Missing verification headers. Found -> ID: {Id}, Timestamp: {Ts}, Signature: {Sig}", 
                 string.IsNullOrEmpty(msgId) ? "MISSING" : "OK",
                 string.IsNullOrEmpty(msgTimestamp) ? "MISSING" : "OK",
                 string.IsNullOrEmpty(msgSignature) ? "MISSING" : "OK");

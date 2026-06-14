@@ -179,6 +179,10 @@ namespace finalyearproject.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("MeetingUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("RecallBotId")
                         .HasColumnType("text");
 

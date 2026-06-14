@@ -23,6 +23,8 @@ public class Meeting
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public MeetingStatus Status { get; set; } = MeetingStatus.Created;
+    [MaxLength(500)]
+    public string? MeetingUrl { get; set; }
     
     [MaxLength(4000)]
     public string? AudioUrl { get; set; } = String.Empty;

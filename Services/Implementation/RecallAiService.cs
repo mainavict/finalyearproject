@@ -26,8 +26,7 @@ public class RecallAiService : IRecallAiService
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    // Note: Injecting HttpClient directly is perfectly safe IF registered via:
-    // builder.Services.AddHttpClient<IRecallAiService, RecallAiService>();
+    
     public RecallAiService(
         HttpClient httpClient,
         IConfiguration configuration,

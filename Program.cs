@@ -126,8 +126,8 @@ builder.Services.AddScoped<Imeeting, MeetingServices>();
 builder.Services.AddScoped<IAudio, AudioServices>();
 builder.Services.AddScoped<IStorage, BackblazeStorage>();
 builder.Services.AddScoped<IAudioProcessingService, AudioProcessingService>();
-builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
-
+//builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
+builder.Services.AddHostedService<finalyearproject.Workers.MeetingSchedulerWorker>();
 // ── HTTP Clients ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
 {
