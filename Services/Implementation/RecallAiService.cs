@@ -55,60 +55,166 @@ public class RecallAiService : IRecallAiService
         return await response.Content.ReadFromJsonAsync<RecallBotResponse>(_jsonOptions, ct);
     }
 
-    public async Task<RecallRecordingMedia?> GetRecordingMediaAsync(string recordingId, CancellationToken ct = default)
+ public async Task<RecallRecordingMedia?> GetRecordingMediaAsync(string recordingId, CancellationToken ct = default)
+{
+    _logger.LogInformation("📥 Fetching media metadata for recording: {RecordingId}", recordingId);
+
+    using var response = await _httpClient.GetAsync($"recording/{recordingId}/", ct);
+    var rawJson = await response.Content.ReadAsStringAsync(ct);
+    
+    _logger.LogInformation("📋 Raw media response for {RecordingId}: {Response}", recordingId, rawJson);
+    
+    response.EnsureSuccessStatusCode();
+
+    // Parse the response manually to handle the actual structure
+    using var doc = JsonDocument.Parse(rawJson);
+    var root = doc.RootElement;
+    
+    string? downloadUrl = null;
+    string contentType = "video/mp4";
+    
+    // Try to get audio_mixed first
+    if (root.TryGetProperty("media_shortcuts", out var mediaShortcuts))
     {
-        _logger.LogInformation("Fetching media metadata for recording: {RecordingId}", Sanitize(recordingId));
-
-        using var response = await _httpClient.GetAsync($"recording/{recordingId}/", ct);
-        response.EnsureSuccessStatusCode();
-
-        return await response.Content.ReadFromJsonAsync<RecallRecordingMedia>(_jsonOptions, ct);
-    }
-
-    public async Task<(Stream Stream, string ContentType, string FileName)> DownloadRecordingAudioAsync(
-        string audioUrl, CancellationToken ct = default)
-    {
-        _logger.LogInformation("Downloading audio from Recall.ai URL: {AudioUrl}", Sanitize(audioUrl));
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, audioUrl);
-        // Intentionally NOT adding Authorization header; Recall.ai media URLs are pre-signed.
-
-        // 1. Wrap response in 'using' to prevent socket leaks
-        using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-
-        if (!response.IsSuccessStatusCode)
+        if (mediaShortcuts.TryGetProperty("audio_mixed", out var audioMixed) && 
+            audioMixed.ValueKind != JsonValueKind.Null &&
+            audioMixed.TryGetProperty("data", out var audioData) &&
+            audioData.TryGetProperty("download_url", out var audioUrl))
         {
-            var err = await response.Content.ReadAsStringAsync(ct);
-            throw new HttpRequestException($"Recall.ai audio download failed ({response.StatusCode}): {err}");
+            downloadUrl = audioUrl.GetString();
+            contentType = "audio/mp4";
+            _logger.LogInformation("✅ Found audio_mixed URL");
         }
-
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "audio/mp4";
-        var extension = contentType switch
+        // Fall back to video_mixed if audio isn't available
+        else if (mediaShortcuts.TryGetProperty("video_mixed", out var videoMixed) && 
+                 videoMixed.ValueKind != JsonValueKind.Null &&
+                 videoMixed.TryGetProperty("data", out var videoData) &&
+                 videoData.TryGetProperty("download_url", out var videoUrl))
         {
-            "audio/mpeg" => ".mp3",
-            "audio/wav"  => ".wav",
-            "audio/ogg"  => ".ogg",
-            "audio/webm" => ".webm",
-            _            => ".mp4"
-        };
+            downloadUrl = videoUrl.GetString();
+            contentType = "video/mp4";
+            _logger.LogInformation("✅ Using video_mixed URL (audio not available)");
+        }
+    }
+    
+    if (string.IsNullOrEmpty(downloadUrl))
+    {
+        _logger.LogError("❌ No audio or video URL found in response");
+        return null;
+    }
+    
+    _logger.LogInformation("✅ Found media URL: {Url}", downloadUrl);
+    
+    // Return a simple object with the URL
+    return new RecallRecordingMedia(
+        Id: recordingId,
+        Media: new RecallMediaLinks(
+            Audio: contentType.StartsWith("audio") ? downloadUrl : null,
+            Video: contentType.StartsWith("video") ? downloadUrl : null
+        )
+    );
+}
+   public async Task<string> GetTranscriptAsync(string botId, CancellationToken ct = default)
+{
+    _logger.LogInformation("📥 Fetching transcript for bot: {BotId}", botId);
 
-        // 2. STREAM LIFECYCLE FIX:
-        // The network stream is tied to the 'response' object. If we return it directly, 
-        // the 'using' block will dispose the response, closing the stream and causing 
-        // an ObjectDisposedException when the controller tries to read it.
-        // We must copy it to a MemoryStream (or a temp file for very large recordings).
-        using var networkStream = await response.Content.ReadAsStreamAsync(ct);
-        var memoryStream = new MemoryStream();
-        await networkStream.CopyToAsync(memoryStream, ct);
+    // ✅ CORRECT: Fetch bot details which includes the transcript
+    var endpoint = $"bot/{botId}/";
+    
+    _logger.LogInformation("🔗 Calling Recall.ai endpoint: {Endpoint}", endpoint);
+
+    using var response = await _httpClient.GetAsync(endpoint, ct);
+
+    // ✅ LOG THE ERROR BODY if the request fails
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorBody = await response.Content.ReadAsStringAsync(ct);
+        _logger.LogError("❌ Failed to fetch bot details for {BotId}. Status: {StatusCode}. Response: {ErrorBody}", 
+            botId, response.StatusCode, errorBody);
         
-        // Reset position to 0 so the controller can read it from the beginning
-        memoryStream.Position = 0; 
-
-        var fileName = $"recording_{Guid.NewGuid():N}{extension}";
-
-        return (memoryStream, contentType, fileName);
+        throw new HttpRequestException($"Recall.ai bot fetch failed ({response.StatusCode}): {errorBody}");
     }
 
+    var json = await response.Content.ReadAsStringAsync(ct);
+    _logger.LogInformation("✅ Successfully fetched bot details for bot {BotId} (Length: {Length})", botId, json.Length);
+    
+    // Parse the bot details and extract transcript
+    using var doc = JsonDocument.Parse(json);
+    var root = doc.RootElement;
+    
+    // Try to extract transcript from the bot response
+    // Recall.ai includes transcript in the bot object under "transcript" or "outputs.transcript"
+    if (root.TryGetProperty("transcript", out var transcriptProp))
+    {
+        var transcriptText = transcriptProp.GetString();
+        if (!string.IsNullOrEmpty(transcriptText))
+        {
+            _logger.LogInformation("✅ Found transcript in bot response (Length: {Length})", transcriptText.Length);
+            return transcriptText;
+        }
+    }
+    
+    // Try nested under outputs
+    if (root.TryGetProperty("outputs", out var outputsProp) && 
+        outputsProp.TryGetProperty("transcript", out var outputsTranscriptProp))
+    {
+        var transcriptText = outputsTranscriptProp.GetString();
+        if (!string.IsNullOrEmpty(transcriptText))
+        {
+            _logger.LogInformation("✅ Found transcript in outputs (Length: {Length})", transcriptText.Length);
+            return transcriptText;
+        }
+    }
+
+    _logger.LogWarning("⚠️ Could not find transcript in bot response. Returning full JSON.");
+    return json;
+}
+
+public async Task<(Stream Stream, string ContentType, string FileName)> DownloadRecordingAudioAsync(
+    string downloadUrl, CancellationToken ct = default)
+{
+    _logger.LogInformation("📥 Downloading media from: {Url}", downloadUrl);
+
+    // ✅ Create a new HttpClient WITHOUT the Recall.ai Authorization header
+    // because the pre-signed S3 URL already has its own signature
+    using var httpClient = new HttpClient();
+    
+    using var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
+    
+    // ✅ Explicitly ensure NO Authorization header is sent
+    request.Headers.Authorization = null;
+    
+    using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+
+    if (!response.IsSuccessStatusCode)
+    {
+        var err = await response.Content.ReadAsStringAsync(ct);
+        throw new HttpRequestException($"Download failed ({response.StatusCode}): {err}");
+    }
+
+    var contentType = response.Content.Headers.ContentType?.MediaType ?? "video/mp4";
+    
+    // ✅ Handle both audio and video files
+    var extension = contentType switch
+    {
+        "audio/mpeg" => ".mp3",
+        "audio/wav" => ".wav",
+        "audio/mp4" => ".m4a",
+        "video/mp4" => ".mp4",
+        _ => ".mp4"
+    };
+
+    using var networkStream = await response.Content.ReadAsStreamAsync(ct);
+    var memoryStream = new MemoryStream();
+    await networkStream.CopyToAsync(memoryStream, ct);
+    memoryStream.Position = 0;
+
+    var fileName = $"recording_{Guid.NewGuid():N}{extension}";
+
+    _logger.LogInformation("✅ Downloaded {FileName} ({Size} bytes)", fileName, memoryStream.Length);
+
+    return (memoryStream, contentType, fileName);
+}
     /// <summary>
     /// Strips newlines and carriage returns to prevent log-forging/injection attacks.
     /// </summary>

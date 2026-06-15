@@ -7,8 +7,13 @@ using finalyearproject.DTOs;
 using finalyearproject.Security;
 using finalyearproject.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using finalyearproject.Data;
+using finalyearproject.Models;
+using finalyearproject.Hubs;
+using Microsoft.AspNetCore.SignalR;
 
 namespace finalyearproject.Controllers;
 
@@ -17,15 +22,27 @@ namespace finalyearproject.Controllers;
 public class RecallWebhookController : ControllerBase
 {
     private readonly IRecallAiService _recallService;
+    private readonly IStorage _storage;
+    private readonly AppDbContext _context;
+    private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly IServiceProvider _serviceProvider;
     private readonly string _webhookSecret;
     private readonly ILogger<RecallWebhookController> _logger;
 
     public RecallWebhookController(
         IRecallAiService recallService,
+        IStorage storage,
+        AppDbContext context,
+        IHubContext<NotificationHub> hubContext,
+        IServiceProvider serviceProvider,
         IConfiguration config,
         ILogger<RecallWebhookController> logger)
     {
         _recallService = recallService;
+        _storage = storage;
+        _context = context;
+        _hubContext = hubContext;
+        _serviceProvider = serviceProvider;
         _webhookSecret = config["RecallAi:WebhookSecret"] 
             ?? throw new InvalidOperationException("RecallAi:WebhookSecret is missing in appsettings.json.");
         _logger = logger;
@@ -34,8 +51,7 @@ public class RecallWebhookController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> HandleBotStatusWebhook(CancellationToken ct)
     {
-        // 1. Read verification headers using .ToString() (The safest way in ASP.NET Core)
-        // It checks the exact casing Recall.ai sent, and falls back to lowercase svix- if needed.
+        // 1. Read verification headers
         var msgId = Request.Headers["Webhook-Id"].ToString();
         if (string.IsNullOrEmpty(msgId)) msgId = Request.Headers["svix-id"].ToString();
 
@@ -47,26 +63,20 @@ public class RecallWebhookController : ControllerBase
 
         if (string.IsNullOrEmpty(msgId) || string.IsNullOrEmpty(msgTimestamp) || string.IsNullOrEmpty(msgSignature))
         {
-            _logger.LogWarning("Missing verification headers. Found -> ID: {Id}, Timestamp: {Ts}, Signature: {Sig}", 
-                string.IsNullOrEmpty(msgId) ? "MISSING" : "OK",
-                string.IsNullOrEmpty(msgTimestamp) ? "MISSING" : "OK",
-                string.IsNullOrEmpty(msgSignature) ? "MISSING" : "OK");
-            
             return BadRequest("Missing verification headers");
         }
 
-        // 2. Read the RAW body (CRITICAL: Do NOT use [FromBody] here)
+        // 2. Read the RAW body
         using var reader = new StreamReader(Request.Body);
         var rawPayload = await reader.ReadToEndAsync(ct);
 
         // 3. Verify Signature
         if (!RecallWebhookVerifier.VerifySignature(_webhookSecret, msgId, msgTimestamp, rawPayload, msgSignature))
         {
-            _logger.LogWarning("Invalid webhook signature detected from IP: {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
             return Unauthorized("Invalid signature");
         }
 
-        // 4. Deserialize payload (now that it's verified)
+        // 4. Deserialize payload
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         var payload = JsonSerializer.Deserialize<RecallWebhookPayload>(rawPayload, options);
         
@@ -76,43 +86,164 @@ public class RecallWebhookController : ControllerBase
         }
 
         var bot = payload.Data.Bot;
-        _logger.LogInformation("Received webhook event: {Event} for Bot: {BotId}", payload.Event, bot.Id);
+        _logger.LogInformation("📥 Received webhook event: {Event} for Bot: {BotId}", payload.Event, bot.Id);
 
-        // 5. Handle "Bot Finished" Event
-        // 5. Handle the "Recording Done" Event
-        if (payload.Event == "recording.done" && bot.Outputs?.Recordings?.Count > 0)
-        {
-            var recordingId = bot.Outputs.Recordings[0].Id;
-            _logger.LogInformation("✅ Recording is done! Fetching media for recording: {RecordingId}", recordingId);
+        // 5. Find the meeting by RecallBotId
+        var meeting = await _context.Meetings
+            .FirstOrDefaultAsync(m => m.RecallBotId == bot.Id, ct);
 
-            try
-            {
-                // Trigger recording fetch logic
-                var media = await _recallService.GetRecordingMediaAsync(recordingId, ct);
-                
-                if (media?.Media != null)
-                {
-                    _logger.LogInformation("🎉 Successfully fetched recording media!");
-                    _logger.LogInformation("   🎵 Audio URL: {AudioUrl}", media.Media.Audio);
-                    _logger.LogInformation("   🎥 Video URL: {VideoUrl}", media.Media.Video);
-                    
-                    // TODO: Save these URLs to your database here!
-                    // e.g., await _dbContext.Meetings.UpdateRecordingUrlsAsync(bot.Id, media.Media.Audio, media.Media.Video);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to fetch media for recording {RecordingId}", recordingId);
-            }
-        }
-        else if (payload.Event == "transcript.done")
+        if (meeting == null)
         {
-            _logger.LogInformation("✅ Transcript processing is complete for Bot: {BotId}", bot.Id);
-            // TODO: Fetch and save the actual transcript text here later
-        
+            _logger.LogWarning("❌ Meeting not found for bot {BotId}", bot.Id);
+            return Ok(new { received = true });
         }
 
-        // 6. Always return 200 OK quickly so Recall.ai knows the webhook was received
+        // ==========================================
+        // 6. ROUTE THE EVENTS
+        // ==========================================
+
+        // EVENT 1: Recording is ready to download
+        if (payload.Event == "recording.done")
+        {
+            _logger.LogInformation("✅ Recording is done! Starting audio download for Meeting: {MeetingId}", meeting.Id);
+
+            // Extract recording ID robustly
+            string? recordingId = null;
+
+            if (bot.Outputs?.Recordings != null && bot.Outputs.Recordings.Count > 0)
+                recordingId = bot.Outputs.Recordings[0].Id;
+            else if (payload.Data.Recording?.Id != null)
+                recordingId = payload.Data.Recording.Id;
+            else if (payload.Data.Outputs?.Recording?.Id != null)
+                recordingId = payload.Data.Outputs.Recording.Id;
+
+            if (string.IsNullOrEmpty(recordingId))
+            {
+                _logger.LogWarning("⚠️ Could not find recording ID in webhook payload.");
+                return Ok(new { received = true });
+            }
+
+            // Fire and forget: Download, upload to B2, and create AudioFile record
+            _ = ProcessRecordingAsync(recordingId, meeting.Id);
+        }
+        // EVENT 2: Bot has left the call
+        else if (payload.Event == "bot.call_ended")
+        {
+            _logger.LogInformation(" Bot left the meeting: {MeetingId}", meeting.Id);
+            meeting.EndedAt = DateTime.UtcNow;
+            meeting.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+        }
+        // EVENT 3: Bot has completely finished all processing
+        else if (payload.Event == "bot.done")
+        {
+            _logger.LogInformation("🎉 Bot completely finished for meeting: {MeetingId}", meeting.Id);
+            
+            meeting.Status = MeetingStatus.Completed;
+            meeting.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+
+            // Send SignalR notification to the user
+            var userId = meeting.CreatorId.ToString();
+            await _hubContext.Clients.User(userId).SendAsync("ReceiveTranscriptionUpdate", new
+            {
+                meetingtitle = meeting.Title,
+                meetingId = meeting.Id,
+                status = "Completed",
+                message = "Your meeting recording has been saved and is ready for processing!"
+            });
+        }
+
+        // 7. Always return 200 OK quickly
         return Ok(new { received = true });
     }
+
+    // ==========================================
+    // BACKGROUND TASK: DOWNLOAD & UPLOAD AUDIO
+    // ==========================================
+  private async Task ProcessRecordingAsync(string recordingId, Guid meetingId)
+{
+    using var scope = _serviceProvider.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var recallService = scope.ServiceProvider.GetRequiredService<IRecallAiService>();
+    var storage = scope.ServiceProvider.GetRequiredService<IStorage>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<RecallWebhookController>>();
+
+    try
+    {
+        logger.LogInformation("📥 Starting background download for recording: {RecordingId}", recordingId);
+
+        // ✅ UPDATED: Check for both audio and video URLs
+        RecallRecordingMedia? media = null;
+        int maxRetries = 3;
+        
+        for (int i = 0; i < maxRetries; i++)
+        {
+            media = await recallService.GetRecordingMediaAsync(recordingId);
+            
+            // ✅ Check if we have EITHER audio OR video
+            if (media?.Media?.Audio != null || media?.Media?.Video != null)
+            {
+                logger.LogInformation("✅ Got media URL on attempt {Attempt}", i + 1);
+                break;
+            }
+            
+            logger.LogWarning("⚠️ No media URL yet (attempt {Attempt}/{MaxRetries}). Waiting 10 seconds...", i + 1, maxRetries);
+            await Task.Delay(TimeSpan.FromSeconds(10));
+        }
+        
+        // ✅ Use video if audio isn't available
+        string? downloadUrl = media?.Media?.Audio ?? media?.Media?.Video;
+        
+        if (string.IsNullOrEmpty(downloadUrl))
+        {
+            logger.LogError("❌ Failed to get media URL after {MaxRetries} attempts for recording {RecordingId}", maxRetries, recordingId);
+            return;
+        }
+
+        logger.LogInformation("📥 Downloading media from Recall.ai: {Url}", downloadUrl);
+
+        var (mediaStream, contentType, fileName) = await recallService.DownloadRecordingAudioAsync(downloadUrl);
+
+        logger.LogInformation("📤 Uploading to Backblaze B2: {FileName}", fileName);
+
+        string fileKey;
+        await using (mediaStream)
+        {
+            fileKey = await storage.UploadStreamAsync(mediaStream, fileName, contentType, "audio");
+        }
+        
+        var backblazeUrl = storage.GetFileUrl(fileKey);
+        logger.LogInformation("✅ Media uploaded to Backblaze: {Url}", backblazeUrl);
+
+        var audioFile = new AudioFile
+        {
+            MeetingId = meetingId,
+            FileName = fileName,
+            FilePath = fileKey,
+            FileUrl = backblazeUrl,
+            ContentType = contentType,
+            FileSize = 0,
+            Status = stutus.pending 
+        };
+
+        context.AudioFiles.Add(audioFile);
+        await context.SaveChangesAsync();
+
+        var meeting = await context.Meetings.FindAsync(meetingId);
+        if (meeting != null)
+        {
+            meeting.AudioUrl = backblazeUrl;
+            meeting.AudioMimeType = contentType;
+            meeting.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+        }
+
+        logger.LogInformation("🎉 AudioFile created with status 'pending'. TranscriptionWorker will pick it up automatically!");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "💥 Critical error processing recording for meeting {MeetingId}", meetingId);
+    }
+}
 }

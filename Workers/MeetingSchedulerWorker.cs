@@ -75,7 +75,7 @@ public class MeetingSchedulerWorker : BackgroundService
                                 }
                             };
 
-                            _logger.LogInformation("📞 Calling Recall.ai API for meeting {MeetingId}...", meeting.Id);
+                            _logger.LogInformation(" Calling Recall.ai API for meeting {MeetingId}...", meeting.Id);
                             
                             var response = await recallService.CreateBotAsync(botRequest, stoppingToken);
 
