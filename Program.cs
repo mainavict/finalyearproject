@@ -159,7 +159,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        // ✅ Allow your Next.js frontend
+        // Allow your Next.js frontend
         policy.WithOrigins("http://localhost:3000","https://minutesapp.vercel.app") 
             .AllowAnyMethod()
             .AllowAnyHeader()
