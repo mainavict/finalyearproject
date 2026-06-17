@@ -84,6 +84,10 @@
               "target": "Package",
               "version": "[2.10.0, )"
             },
+            "Polly": {
+              "target": "Package",
+              "version": "[8.7.0, )"
+            },
             "Scalar.AspNetCore": {
               "target": "Package",
               "version": "[2.13.17, )"

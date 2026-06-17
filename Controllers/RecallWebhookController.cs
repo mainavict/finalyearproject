@@ -103,6 +103,14 @@ public class RecallWebhookController : ControllerBase
         // ==========================================
 
         // EVENT 1: Recording is ready to download
+        
+        
+        if (payload.Event == "participant_events.done")
+        {
+            // Extract participants from payload.Data.Bot.Outputs.ParticipantEvents
+            // Save to a Participants table
+        }
+        
         if (payload.Event == "recording.done")
         {
             _logger.LogInformation("✅ Recording is done! Starting audio download for Meeting: {MeetingId}", meeting.Id);

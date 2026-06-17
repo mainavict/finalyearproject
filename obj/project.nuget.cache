@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Rql6OBE6BEQ=",
+  "dgSpecHash": "jHUwhp+T3g8=",
   "success": true,
   "projectFilePath": "C:\\Users\\victor\\Developent\\finalyearproject\\finalyearproject.csproj",
   "expectedPackageFiles": [
@@ -9,8 +9,8 @@
     "C:\\Users\\victor\\.nuget\\packages\\awssdk.s3\\4.0.22.1\\awssdk.s3.4.0.22.1.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
-    "C:\\Users\\victor\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.16\\microsoft.aspnetcore.authentication.jwtbearer.9.0.16.nupkg.sha512",
-    "C:\\Users\\victor\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.16\\microsoft.aspnetcore.openapi.9.0.16.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\9.0.17\\microsoft.aspnetcore.authentication.jwtbearer.9.0.17.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\microsoft.aspnetcore.openapi\\9.0.17\\microsoft.aspnetcore.openapi.9.0.17.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\7.0.0\\microsoft.bcl.asyncinterfaces.7.0.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.bcl.cryptography\\10.0.2\\microsoft.bcl.cryptography.10.0.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.build.framework\\17.8.3\\microsoft.build.framework.17.8.3.nupkg.sha512",
@@ -63,6 +63,8 @@
     "C:\\Users\\victor\\.nuget\\packages\\oneof\\3.0.271\\oneof.3.0.271.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\oneof.extended\\3.0.271\\oneof.extended.3.0.271.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\openai\\2.10.0\\openai.2.10.0.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\polly\\8.7.0\\polly.8.7.0.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\polly.core\\8.7.0\\polly.core.8.7.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\riok.mapperly\\3.6.0\\riok.mapperly.3.6.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\runtime.debian.8-x64.runtime.native.system.security.cryptography.openssl\\4.3.2\\runtime.debian.8-x64.runtime.native.system.security.cryptography.openssl.4.3.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\runtime.fedora.23-x64.runtime.native.system.security.cryptography.openssl\\4.3.2\\runtime.fedora.23-x64.runtime.native.system.security.cryptography.openssl.4.3.2.nupkg.sha512",

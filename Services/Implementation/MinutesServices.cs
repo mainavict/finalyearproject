@@ -6,86 +6,139 @@ using finalyearproject.DTOs;
 using finalyearproject.Models;
 using finalyearproject.Wrappers;
 using Microsoft.Extensions.Configuration;
-using Microsoft.EntityFrameworkCore; 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Retry;
 
 namespace finalyearproject.Services.Implementation;
 
-public class MinutesServices:Iminutes
+public class MinutesServices : Iminutes
 {
-    
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _apiUrl;
-    private  readonly AppDbContext _context;
+    private readonly string _modelName;
+    private readonly AppDbContext _context;
+    private readonly ILogger<MinutesServices> _logger;
+    private readonly AsyncRetryPolicy _retryPolicy;
     
-    
-    
-    public MinutesServices(HttpClient httpClient, IConfiguration configuration,AppDbContext context)
-            {
-                _httpClient = httpClient;
-                _apiKey = configuration["GeminiApi:ApiKey"] 
-                          ?? throw new ArgumentNullException("API Key is missing");
-                _apiUrl = configuration["GeminiApi:Url"] 
-                          ?? throw new ArgumentNullException("API URL is missing");
-                
-                _context = context;
-            }
-    
-    
-    
-    public async Task<string> GenerateMinutesAsync( Guid  transcriptId)
+    // Token limits (Gemini 1.5 Flash has 1M tokens, but we'll be conservative)
+    private const int MAX_TRANSCRIPT_CHARS = 100000; // ~25k tokens
+    private const int MAX_RETRIES = 3;
+
+    public MinutesServices(
+        HttpClient httpClient, 
+        IConfiguration configuration, 
+        AppDbContext context,
+        ILogger<MinutesServices> logger)
+    {
+        _httpClient = httpClient;
+        _apiKey = configuration["GeminiApi:ApiKey"] 
+                  ?? throw new ArgumentNullException("API Key is missing");
+        _apiUrl = configuration["GeminiApi:Url"] 
+                  ?? throw new ArgumentNullException("API URL is missing");
+        _modelName = configuration["GeminiApi:Model"] ?? "gemini-1.5-flash";
+        
+        _context = context;
+        _logger = logger;
+
+        // Configure retry policy with exponential backoff
+        _retryPolicy = Policy
+            .Handle<HttpRequestException>()
+            .Or<TaskCanceledException>()
+            .WaitAndRetryAsync(
+                MAX_RETRIES,
+                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                (exception, timeSpan, retryCount, context) =>
+                {
+                    _logger.LogWarning(
+                        "Retry {RetryCount} due to: {ExceptionMessage}. Waiting {TimeSpan}s",
+                        retryCount, exception.Message, timeSpan.TotalSeconds);
+                });
+    }
+
+    public async Task<string> GenerateMinutesAsync(Guid transcriptId)
     {
         var transcriptRecord = await _context.Transcripts.FindAsync(transcriptId);
-        if (transcriptRecord == null)        {
+        if (transcriptRecord == null)
+        {
             throw new ArgumentException("Transcript not found for the given ID.");
         }
-        
-        
-        // System instruction + the actual transcript data
-        var prompt = $@"
-You are a professional meeting secretary.
-    Read the following meeting transcript and extract structured meeting minutes.
 
-    RULES:
-    - Only include information explicitly stated in the transcript
-    - Do not invent or assume anything
-    - If a field cannot be determined, use null or empty array
-    - Action items must have a named owner
-    - Respond ONLY with raw valid JSON — no markdown, no code blocks,
-      no explanation, no backticks. Just the JSON object.
+        if (string.IsNullOrWhiteSpace(transcriptRecord.RawText))
+        {
+            throw new ArgumentException("Transcript is empty.");
+        }
 
-    TRANSCRIPT:
-    {{transcript}}
+        // Truncate if too long
+        var transcriptText = transcriptRecord.RawText;
+        if (transcriptText.Length > MAX_TRANSCRIPT_CHARS)
+        {
+            _logger.LogWarning(
+                "Transcript too long ({Length} chars). Truncating to {MaxChars} chars.",
+                transcriptText.Length, MAX_TRANSCRIPT_CHARS);
+            transcriptText = transcriptText.Substring(0, MAX_TRANSCRIPT_CHARS) + 
+                           "\n\n[TRANSCRIPT TRUNCATED DUE TO LENGTH]";
+        }
 
-    Return this exact JSON structure:
-    {{{{
-      ""meetingTitle"":     ""string or null"",
-      ""meetingDate"":      ""string or null"",
-      ""attendees"":        [""name1"", ""name2""],
-      ""absentWithApology"":[""name1""],
-      ""absentWithoutApology"":[""name1""],
-      ""meetingSummary"":   ""string"",
-      ""discussionPoints"": [
-        {{{{
-          ""topic"":   ""string"",
-          ""summary"": ""string""
-        }}}}
-      ],
-      ""decisions"": [""string""],
-      ""actionItems"": [
-        {{{{
-          ""owner"":   ""string"",
-          ""task"":    ""string"",
-          ""dueDate"": ""string or null""
-        }}}}
-      ],
-      ""nextMeeting"": ""string or null""
-    }}}}
+        var prompt = BuildOptimizedPrompt(transcriptText);
 
-Transcript:
-{transcriptRecord.RawText}";
+        return await _retryPolicy.ExecuteAsync(async () =>
+        {
+            return await CallGeminiApiAsync(prompt);
+        });
+    }
 
-        var requestBody = new GeminiRequest
+    private string BuildOptimizedPrompt(string transcript)
+    {
+        return $@"You are an expert meeting secretary with 20 years of experience. Your task is to analyze the meeting transcript below and generate comprehensive, structured meeting minutes.
+
+## CRITICAL RULES:
+1. **Accuracy First**: Only include information explicitly stated in the transcript. Never invent, assume, or hallucinate information.
+2. **Professional Tone**: Use formal, clear, and concise language.
+3. **Completeness**: Capture all important discussions, decisions, and action items.
+4. **Structure**: Follow the exact JSON schema provided below.
+5. **No Hallucinations**: If information is not in the transcript, use null or empty arrays.
+6. **Action Items**: Every action item MUST have a specific owner (person's name). If no owner is mentioned, use ""Unassigned"".
+7. **JSON Only**: Return ONLY valid JSON. No markdown, no code blocks, no explanations, no backticks.
+
+## OUTPUT SCHEMA:
+{{
+  ""meetingTitle"": ""string or null - The main topic or title of the meeting"",
+  ""meetingDate"": ""string or null - Date in format 'YYYY-MM-DD' if mentioned, otherwise null"",
+  ""attendees"": [""array of strings - Full names of all participants""],
+  ""absentWithApology"": [""array of strings - People who sent apologies""],
+  ""absentWithoutApology"": [""array of strings - People who were expected but absent""],
+  ""meetingSummary"": ""string - A comprehensive 2-3 paragraph summary of the entire meeting"",
+  ""discussionPoints"": [
+    {{
+      ""topic"": ""string - The main topic discussed"",
+      ""summary"": ""string - Detailed summary of the discussion on this topic""
+    }}
+  ],
+  ""decisions"": [""array of strings - All decisions made during the meeting""],
+  ""actionItems"": [
+    {{
+      ""owner"": ""string - Name of the person responsible"",
+      ""task"": ""string - Specific task to be completed"",
+      ""dueDate"": ""string or null - Due date if mentioned, otherwise null""
+    }}
+  ],
+  ""nextMeeting"": ""string or null - Date/time of next meeting if scheduled""
+}}
+
+## TRANSCRIPT:
+---
+{transcript}
+---
+
+Now analyze the transcript and generate the meeting minutes as JSON:";
+    }
+
+    private async Task<string> CallGeminiApiAsync(string prompt)
+    {
+        var requestBody = new
         {
             contents = new[]
             {
@@ -93,6 +146,13 @@ Transcript:
                 {
                     parts = new[] { new { text = prompt } }
                 }
+            },
+            generationConfig = new
+            {
+                temperature = 0.3, // Lower temperature for more consistent output
+                topP = 0.8,
+                topK = 40,
+                maxOutputTokens = 8192,
             }
         };
 
@@ -101,40 +161,101 @@ Transcript:
             Encoding.UTF8,
             "application/json");
 
-        // Append API key to the query string
         var requestUri = $"{_apiUrl}?key={_apiKey}";
         
-        Console.WriteLine($"\n=== DEBUG URL: {requestUri} ===\n");
-        
+        _logger.LogInformation("Calling Gemini API with model: {Model}", _modelName);
+
         var response = await _httpClient.PostAsync(requestUri, jsonContent);
-        response.EnsureSuccessStatusCode();
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Gemini API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            throw new HttpRequestException($"Gemini API returned {response.StatusCode}: {errorContent}");
+        }
 
         var responseJson = await response.Content.ReadAsStringAsync();
         var geminiResponse = JsonSerializer.Deserialize<GeminiResponse>(responseJson);
 
-        // Extract the generated text from the response payload
         var generatedMinutes = geminiResponse?.candidates?[0]?.content?.parts?[0]?.text;
-        
 
-        return generatedMinutes ?? "Failed to generate minutes.";
+        if (string.IsNullOrWhiteSpace(generatedMinutes))
+        {
+            _logger.LogWarning("Gemini returned empty response");
+            throw new InvalidOperationException("Gemini returned empty response");
+        }
+
+        // Clean and validate the JSON
+        var cleanedJson = CleanJsonResponse(generatedMinutes);
+        
+        // Validate it's proper JSON
+        try
+        {
+            JsonDocument.Parse(cleanedJson);
+            _logger.LogInformation("Successfully generated and validated meeting minutes JSON");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Generated minutes is not valid JSON: {Json}", cleanedJson);
+            throw new InvalidOperationException("Generated minutes is not valid JSON", ex);
+        }
+
+        return cleanedJson;
     }
-    
-    
-    public async Task <ApiResponse<Minutes>> GetMinutesByMeetingIdAsync(Guid meetingId)
+
+    private string CleanJsonResponse(string json)
     {
-        var minutes = await _context.Minutes.FirstOrDefaultAsync(m => m.MeetingId == meetingId);
+        if (string.IsNullOrWhiteSpace(json))
+            return "{}";
+
+        json = json.Trim();
+
+        // Remove markdown code blocks if present
+        if (json.StartsWith("```json"))
+            json = json.Substring(7);
+        else if (json.StartsWith("```"))
+            json = json.Substring(3);
+
+        if (json.EndsWith("```"))
+            json = json.Substring(0, json.Length - 3);
+
+        json = json.Trim();
+
+        // Remove any trailing commas before closing braces/brackets
+        json = System.Text.RegularExpressions.Regex.Replace(json, @",\s*([\]}])", @"$1");
+
+        return json;
+    }
+
+    public async Task<ApiResponse<Minutes>> GetMinutesByMeetingIdAsync(Guid meetingId)
+    {
+        var minutes = await _context.Minutes
+            .Include(m => m.Meeting)
+            .FirstOrDefaultAsync(m => m.MeetingId == meetingId);
+            
         if (minutes == null)
         {
-            return ApiResponse<Minutes>.FailureResponse("Minutes not found for the given meeting ID.", statusCode: 404);
+            return ApiResponse<Minutes>.FailureResponse(
+                "Minutes not found for the given meeting ID.", 
+                statusCode: 404);
         }
-        return  ApiResponse<Minutes>.SuccessResponse(minutes, "Minutes retrieved successfully.", statusCode: 200);
-    }
-    
-    public async Task <ApiResponse<List<Minutes>>> GetAllMinutesAsync()
-    {
-        var minutesList = await _context.Minutes.ToListAsync();
-        return ApiResponse<List<Minutes>>.SuccessResponse(minutesList, "All minutes retrieved successfully.", statusCode: 200);
+        
+        return ApiResponse<Minutes>.SuccessResponse(
+            minutes, 
+            "Minutes retrieved successfully.", 
+            statusCode: 200);
     }
 
-    
+    public async Task<ApiResponse<List<Minutes>>> GetAllMinutesAsync()
+    {
+        var minutesList = await _context.Minutes
+            .Include(m => m.Meeting)
+            .OrderByDescending(m => m.CreatedAt)
+            .ToListAsync();
+            
+        return ApiResponse<List<Minutes>>.SuccessResponse(
+            minutesList, 
+            "All minutes retrieved successfully.", 
+            statusCode: 200);
+    }
 }
