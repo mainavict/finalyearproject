@@ -44,4 +44,5 @@ public class Meeting
     public Transcript? Transcript { get; set; }
     public Minutes? Minutes { get; set; }
     public ICollection<AudioFile> AudioFiles { get; set; }
+    public ICollection<Participant> Participants { get; set; } = new List<Participant>();
 }

@@ -44,6 +44,59 @@ public class RecallAiService : IRecallAiService
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Token", apiKey);
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
+    
+    
+    
+    public async Task<List<RecallParticipantEvent>?> GetParticipantEventsAsync(string recordingId, CancellationToken ct = default)
+{
+    _logger.LogInformation("👥 Fetching participant events for recording: {RecordingId}", recordingId);
+
+    var endpoint = $"recording/{recordingId}/";
+    using var response = await _httpClient.GetAsync(endpoint, ct);
+    
+    if (!response.IsSuccessStatusCode)
+    {
+        _logger.LogWarning("⚠️ Failed to fetch recording details: {StatusCode}", response.StatusCode);
+        return null;
+    }
+
+    var json = await response.Content.ReadAsStringAsync(ct);
+    using var doc = JsonDocument.Parse(json);
+    var root = doc.RootElement;
+
+    // Try to find participant_events in media_shortcuts
+    if (root.TryGetProperty("media_shortcuts", out var mediaShortcuts) &&
+        mediaShortcuts.TryGetProperty("participant_events", out var participantEvents) &&
+        participantEvents.TryGetProperty("data", out var data) &&
+        data.TryGetProperty("participant_events_download_url", out var downloadUrlProp))
+    {
+        var downloadUrl = downloadUrlProp.GetString();
+        
+        if (!string.IsNullOrEmpty(downloadUrl))
+        {
+            _logger.LogInformation("📥 Downloading participant events from: {Url}", downloadUrl);
+            
+            // Download the participant events JSON
+            using var eventsResponse = await _httpClient.GetAsync(downloadUrl, ct);
+            if (eventsResponse.IsSuccessStatusCode)
+            {
+                var eventsJson = await eventsResponse.Content.ReadAsStringAsync(ct);
+                var events = JsonSerializer.Deserialize<List<RecallParticipantEvent>>(eventsJson, new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true 
+                });
+                
+                _logger.LogInformation("✅ Found {Count} participant events", events?.Count ?? 0);
+                return events;
+            }
+        }
+    }
+
+    _logger.LogWarning("⚠️ No participant events found in recording data");
+    return null;
+}
+    
+    
 
     public async Task<RecallBotResponse?> CreateBotAsync(RecallBotRequest request, CancellationToken ct = default)
     {
@@ -221,3 +274,5 @@ public async Task<(Stream Stream, string ContentType, string FileName)> Download
     private static string Sanitize(string value) =>
         value?.Replace("\r", string.Empty).Replace("\n", string.Empty) ?? string.Empty;
 }
+
+

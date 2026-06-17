@@ -126,3 +126,22 @@ public record StartMeetingRequest(
     string MeetingUrl,
     Guid InternalMeetingId
 );
+
+
+public class RecallParticipantEvent
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "join", "leave"
+    public DateTime CreatedAt { get; set; }
+    public RecallParticipantInfo? Participant { get; set; }
+    public bool IsHost { get; set; }
+    public DateTime? LeftAt { get; set; }
+    public int? DurationSeconds { get; set; }
+}
+
+public class RecallParticipantInfo
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Label { get; set; } // Name
+    public string? Email { get; set; }
+}

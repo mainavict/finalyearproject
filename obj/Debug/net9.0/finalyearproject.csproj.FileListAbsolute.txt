@@ -566,3 +566,5 @@ C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityM
 C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
 C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Polly.dll
+C:\Users\victor\Developent\finalyearproject\bin\Debug\net9.0\Polly.Core.dll

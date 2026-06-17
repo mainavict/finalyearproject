@@ -11,11 +11,12 @@
           "AWSSDK.S3": "4.0.22.1",
           "AssemblyAI": "1.2.2",
           "BCrypt.Net-Next": "4.1.0",
-          "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.16",
-          "Microsoft.AspNetCore.OpenApi": "9.0.16",
+          "Microsoft.AspNetCore.Authentication.JwtBearer": "9.0.17",
+          "Microsoft.AspNetCore.OpenApi": "9.0.17",
           "Microsoft.EntityFrameworkCore.Design": "9.0.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.0",
           "OpenAI": "2.10.0",
+          "Polly": "8.7.0",
           "Scalar.AspNetCore": "2.13.17",
           "System.IdentityModel.Tokens.Jwt": "8.19.1",
           "Whisper.net": "1.9.0",
@@ -82,25 +83,25 @@
           }
         }
       },
-      "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.16": {
+      "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.17": {
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.0.1"
         },
         "runtime": {
           "lib/net9.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll": {
-            "assemblyVersion": "9.0.16.0",
-            "fileVersion": "9.0.1626.23009"
+            "assemblyVersion": "9.0.17.0",
+            "fileVersion": "9.0.1726.26907"
           }
         }
       },
-      "Microsoft.AspNetCore.OpenApi/9.0.16": {
+      "Microsoft.AspNetCore.OpenApi/9.0.17": {
         "dependencies": {
           "Microsoft.OpenApi": "1.6.17"
         },
         "runtime": {
           "lib/net9.0/Microsoft.AspNetCore.OpenApi.dll": {
-            "assemblyVersion": "9.0.16.0",
-            "fileVersion": "9.0.1626.23009"
+            "assemblyVersion": "9.0.17.0",
+            "fileVersion": "9.0.1726.26907"
           }
         }
       },
@@ -844,6 +845,25 @@
           "lib/net8.0/OpenAI.dll": {
             "assemblyVersion": "2.10.0.0",
             "fileVersion": "2.10.0.0"
+          }
+        }
+      },
+      "Polly/8.7.0": {
+        "dependencies": {
+          "Polly.Core": "8.7.0"
+        },
+        "runtime": {
+          "lib/net6.0/Polly.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.7.0.5801"
+          }
+        }
+      },
+      "Polly.Core/8.7.0": {
+        "runtime": {
+          "lib/net8.0/Polly.Core.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.7.0.5801"
           }
         }
       },
@@ -1696,19 +1716,19 @@
       "path": "humanizer.core/2.14.1",
       "hashPath": "humanizer.core.2.14.1.nupkg.sha512"
     },
-    "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.16": {
+    "Microsoft.AspNetCore.Authentication.JwtBearer/9.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-/AvOo4HZY3w1Th2EDzKd5qWBSi2rIREKUQnyEpxs758zG0eu8cCd9qdHuHjiRX1ngaAqasNWlXgf3AwbXtIrIw==",
-      "path": "microsoft.aspnetcore.authentication.jwtbearer/9.0.16",
-      "hashPath": "microsoft.aspnetcore.authentication.jwtbearer.9.0.16.nupkg.sha512"
+      "sha512": "sha512-q9vNiBMoJpyYSjDunMW2VO6NYpvyTBG5k5gKmb5HAiG0eV5xJLuzHrMKns70fdmdxYOHJ3+7zthj0uyH4lKIfA==",
+      "path": "microsoft.aspnetcore.authentication.jwtbearer/9.0.17",
+      "hashPath": "microsoft.aspnetcore.authentication.jwtbearer.9.0.17.nupkg.sha512"
     },
-    "Microsoft.AspNetCore.OpenApi/9.0.16": {
+    "Microsoft.AspNetCore.OpenApi/9.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-DSoVJVoQCL/Iriue4AHpwcVN20Wp9MorM5TOEyaGoIkDWcPnljUI1va76SSk5DyRmxOqXB/LGQOmSvYSCLi9fA==",
-      "path": "microsoft.aspnetcore.openapi/9.0.16",
-      "hashPath": "microsoft.aspnetcore.openapi.9.0.16.nupkg.sha512"
+      "sha512": "sha512-+zcqQ/JecNl4G1hC2mrJ8qDolJv17W3grToEqcGZGqa3cXWaCjA9KTdigU0WVK3LWI0TtOG/Q/joXRdKqFhB9Q==",
+      "path": "microsoft.aspnetcore.openapi/9.0.17",
+      "hashPath": "microsoft.aspnetcore.openapi.9.0.17.nupkg.sha512"
     },
     "Microsoft.Bcl.AsyncInterfaces/7.0.0": {
       "type": "package",
@@ -2073,6 +2093,20 @@
       "sha512": "sha512-e5gAhMDcX5bFmmtR+lT6qZxJoaGb0SkIplPUUdKwcC4xerCh471hTIsrvfkou7scfZD9YQk6C06dP3NwBqHw1A==",
       "path": "openai/2.10.0",
       "hashPath": "openai.2.10.0.nupkg.sha512"
+    },
+    "Polly/8.7.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0qR4f0OR8FeCAfLWcfwzAM7w6EmpUgwa22PgxKjcL25dEAto7sKpQQXbtxp38vVvK+V3RFkh/TeI7g/iUdoYIQ==",
+      "path": "polly/8.7.0",
+      "hashPath": "polly.8.7.0.nupkg.sha512"
+    },
+    "Polly.Core/8.7.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-BS2t+nsBer16PIebCEPNBK5fgMisADQyRCd7K+BgkMWpFmSaiYE+rVVNpFhGRqUkJmNSLmw0uCNzHHWfgml28Q==",
+      "path": "polly.core/8.7.0",
+      "hashPath": "polly.core.8.7.0.nupkg.sha512"
     },
     "Riok.Mapperly/3.6.0": {
       "type": "package",
