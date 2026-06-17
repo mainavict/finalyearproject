@@ -154,6 +154,8 @@ builder.Services.AddHttpClient<Iminutes, MinutesServices>();
 builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+builder.Services.AddHealthChecks();
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
@@ -187,5 +189,6 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapHub<finalyearproject.Hubs.NotificationHub>("/hubs/notifications");
 app.Run();
