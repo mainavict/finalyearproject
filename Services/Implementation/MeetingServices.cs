@@ -121,6 +121,7 @@ public class MeetingServices:Imeeting
             Description = meeting.Description,
             Status = meeting.Status.ToString(),
             CreatedBy = meeting.CreatorId,
+            MeetingUrl = meeting.MeetingUrl,
             ApprovedBy = meeting.ApprovedBy,
             AudioUrl = meeting.AudioUrl,
             ScheduledAt = meeting.ScheduledAt,
