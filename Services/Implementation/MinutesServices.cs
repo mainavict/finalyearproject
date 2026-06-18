@@ -18,14 +18,15 @@ public class MinutesServices : Iminutes
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _apiUrl;
+    private readonly string _fallbackApiUrl; // ✅ NEW: Fallback model URL
     private readonly string _modelName;
+    private readonly string _fallbackModelName; // ✅ NEW: Fallback model
     private readonly AppDbContext _context;
     private readonly ILogger<MinutesServices> _logger;
     private readonly AsyncRetryPolicy _retryPolicy;
     
-    // Token limits (Gemini 1.5 Flash has 1M tokens, but we'll be conservative)
-    private const int MAX_TRANSCRIPT_CHARS = 100000; // ~25k tokens
-    private const int MAX_RETRIES = 3;
+    private const int MAX_TRANSCRIPT_CHARS = 100000;
+    private const int MAX_RETRIES = 5; // ✅ INCREASED: More retries for 503 errors
 
     public MinutesServices(
         HttpClient httpClient, 
@@ -38,23 +39,41 @@ public class MinutesServices : Iminutes
                   ?? throw new ArgumentNullException("API Key is missing");
         _apiUrl = configuration["GeminiApi:Url"] 
                   ?? throw new ArgumentNullException("API URL is missing");
-        _modelName = configuration["GeminiApi:Model"] ?? "gemini-1.5-flash";
+        _modelName = configuration["GeminiApi:Model"] ?? "gemini-2.5-flash";
+        
+        // ✅ NEW: Fallback model configuration
+        _fallbackApiUrl = configuration["GeminiApi:FallbackUrl"] 
+            ?? "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+        _fallbackModelName = configuration["GeminiApi:FallbackModel"] ?? "gemini-1.5-flash";
         
         _context = context;
         _logger = logger;
 
-        // Configure retry policy with exponential backoff
+        // ✅ IMPROVED: Retry policy with longer waits for 503 errors
         _retryPolicy = Policy
-            .Handle<HttpRequestException>()
+            .Handle<HttpRequestException>(ex => 
+            {
+                // Retry on 503 (Service Unavailable) or 429 (Rate Limit)
+                return ex.Message.Contains("503") || 
+                       ex.Message.Contains("429") ||
+                       ex.Message.Contains("ServiceUnavailable") ||
+                       ex.Message.Contains("TooManyRequests");
+            })
             .Or<TaskCanceledException>()
             .WaitAndRetryAsync(
                 MAX_RETRIES,
-                retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                retryAttempt => 
+                {
+                    // ✅ Exponential backoff with jitter: 5s, 10s, 20s, 40s, 80s
+                    var baseDelay = TimeSpan.FromSeconds(Math.Pow(2, retryAttempt) * 2.5);
+                    var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, 2000));
+                    return baseDelay + jitter;
+                },
                 (exception, timeSpan, retryCount, context) =>
                 {
                     _logger.LogWarning(
-                        "Retry {RetryCount} due to: {ExceptionMessage}. Waiting {TimeSpan}s",
-                        retryCount, exception.Message, timeSpan.TotalSeconds);
+                        "⚠️ Retry {RetryCount}/{MaxRetries} due to: {ExceptionMessage}. Waiting {TimeSpan}s",
+                        retryCount, MAX_RETRIES, exception.Message, timeSpan.TotalSeconds);
                 });
     }
 
@@ -71,7 +90,6 @@ public class MinutesServices : Iminutes
             throw new ArgumentException("Transcript is empty.");
         }
 
-        // Truncate if too long
         var transcriptText = transcriptRecord.RawText;
         if (transcriptText.Length > MAX_TRANSCRIPT_CHARS)
         {
@@ -84,10 +102,24 @@ public class MinutesServices : Iminutes
 
         var prompt = BuildOptimizedPrompt(transcriptText);
 
-        return await _retryPolicy.ExecuteAsync(async () =>
+        // ✅ Try primary model first, then fallback
+        try
         {
-            return await CallGeminiApiAsync(prompt);
-        });
+            return await _retryPolicy.ExecuteAsync(async () =>
+            {
+                return await CallGeminiApiAsync(prompt, _apiUrl, _modelName);
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary model failed. Trying fallback model: {FallbackModel}", _fallbackModelName);
+            
+            // ✅ Fallback to alternative model
+            return await _retryPolicy.ExecuteAsync(async () =>
+            {
+                return await CallGeminiApiAsync(prompt, _fallbackApiUrl, _fallbackModelName);
+            });
+        }
     }
 
     private string BuildOptimizedPrompt(string transcript)
@@ -136,7 +168,7 @@ public class MinutesServices : Iminutes
 Now analyze the transcript and generate the meeting minutes as JSON:";
     }
 
-    private async Task<string> CallGeminiApiAsync(string prompt)
+    private async Task<string> CallGeminiApiAsync(string prompt, string apiUrl, string modelName)
     {
         var requestBody = new
         {
@@ -149,7 +181,7 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             },
             generationConfig = new
             {
-                temperature = 0.3, // Lower temperature for more consistent output
+                temperature = 0.3,
                 topP = 0.8,
                 topK = 40,
                 maxOutputTokens = 8192,
@@ -161,16 +193,16 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             Encoding.UTF8,
             "application/json");
 
-        var requestUri = $"{_apiUrl}?key={_apiKey}";
+        var requestUri = $"{apiUrl}?key={_apiKey}";
         
-        _logger.LogInformation("Calling Gemini API with model: {Model}", _modelName);
+        _logger.LogInformation("🤖 Calling Gemini API with model: {Model}", modelName);
 
         var response = await _httpClient.PostAsync(requestUri, jsonContent);
         
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogError("Gemini API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            _logger.LogError("❌ Gemini API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
             throw new HttpRequestException($"Gemini API returned {response.StatusCode}: {errorContent}");
         }
 
@@ -181,22 +213,20 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
 
         if (string.IsNullOrWhiteSpace(generatedMinutes))
         {
-            _logger.LogWarning("Gemini returned empty response");
+            _logger.LogWarning("⚠️ Gemini returned empty response");
             throw new InvalidOperationException("Gemini returned empty response");
         }
 
-        // Clean and validate the JSON
         var cleanedJson = CleanJsonResponse(generatedMinutes);
         
-        // Validate it's proper JSON
         try
         {
             JsonDocument.Parse(cleanedJson);
-            _logger.LogInformation("Successfully generated and validated meeting minutes JSON");
+            _logger.LogInformation("✅ Successfully generated and validated meeting minutes JSON with {Model}", modelName);
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Generated minutes is not valid JSON: {Json}", cleanedJson);
+            _logger.LogError(ex, "❌ Generated minutes is not valid JSON: {Json}", cleanedJson);
             throw new InvalidOperationException("Generated minutes is not valid JSON", ex);
         }
 
@@ -210,7 +240,6 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
 
         json = json.Trim();
 
-        // Remove markdown code blocks if present
         if (json.StartsWith("```json"))
             json = json.Substring(7);
         else if (json.StartsWith("```"))
@@ -220,8 +249,6 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             json = json.Substring(0, json.Length - 3);
 
         json = json.Trim();
-
-        // Remove any trailing commas before closing braces/brackets
         json = System.Text.RegularExpressions.Regex.Replace(json, @",\s*([\]}])", @"$1");
 
         return json;
