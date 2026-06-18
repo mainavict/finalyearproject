@@ -1,6 +1,7 @@
 using finalyearproject.Services.Interfaces;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using finalyearproject.Data;
 using finalyearproject.DTOs;
 using finalyearproject.Models;
@@ -18,15 +19,15 @@ public class MinutesServices : Iminutes
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private readonly string _apiUrl;
-    private readonly string _fallbackApiUrl; // ✅ NEW: Fallback model URL
+    private readonly string _fallbackApiUrl;
     private readonly string _modelName;
-    private readonly string _fallbackModelName; // ✅ NEW: Fallback model
+    private readonly string _fallbackModelName;
     private readonly AppDbContext _context;
     private readonly ILogger<MinutesServices> _logger;
     private readonly AsyncRetryPolicy _retryPolicy;
     
     private const int MAX_TRANSCRIPT_CHARS = 100000;
-    private const int MAX_RETRIES = 5; // ✅ INCREASED: More retries for 503 errors
+    private const int MAX_RETRIES = 5;
 
     public MinutesServices(
         HttpClient httpClient, 
@@ -41,19 +42,17 @@ public class MinutesServices : Iminutes
                   ?? throw new ArgumentNullException("API URL is missing");
         _modelName = configuration["GeminiApi:Model"] ?? "gemini-2.5-flash";
         
-        // ✅ NEW: Fallback model configuration
+        // ✅ FIXED: Use correct fallback model name
         _fallbackApiUrl = configuration["GeminiApi:FallbackUrl"] 
-            ?? "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-        _fallbackModelName = configuration["GeminiApi:FallbackModel"] ?? "gemini-1.5-flash";
+            ?? "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+        _fallbackModelName = configuration["GeminiApi:FallbackModel"] ?? "gemini-2.0-flash";
         
         _context = context;
         _logger = logger;
 
-        // ✅ IMPROVED: Retry policy with longer waits for 503 errors
         _retryPolicy = Policy
             .Handle<HttpRequestException>(ex => 
             {
-                // Retry on 503 (Service Unavailable) or 429 (Rate Limit)
                 return ex.Message.Contains("503") || 
                        ex.Message.Contains("429") ||
                        ex.Message.Contains("ServiceUnavailable") ||
@@ -64,7 +63,6 @@ public class MinutesServices : Iminutes
                 MAX_RETRIES,
                 retryAttempt => 
                 {
-                    // ✅ Exponential backoff with jitter: 5s, 10s, 20s, 40s, 80s
                     var baseDelay = TimeSpan.FromSeconds(Math.Pow(2, retryAttempt) * 2.5);
                     var jitter = TimeSpan.FromMilliseconds(new Random().Next(0, 2000));
                     return baseDelay + jitter;
@@ -102,7 +100,7 @@ public class MinutesServices : Iminutes
 
         var prompt = BuildOptimizedPrompt(transcriptText);
 
-        // ✅ Try primary model first, then fallback
+        // Try primary model first, then fallback
         try
         {
             return await _retryPolicy.ExecuteAsync(async () =>
@@ -112,9 +110,8 @@ public class MinutesServices : Iminutes
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Primary model failed. Trying fallback model: {FallbackModel}", _fallbackModelName);
+            _logger.LogWarning(ex, "⚠️ Primary model failed. Trying fallback model: {FallbackModel}", _fallbackModelName);
             
-            // ✅ Fallback to alternative model
             return await _retryPolicy.ExecuteAsync(async () =>
             {
                 return await CallGeminiApiAsync(prompt, _fallbackApiUrl, _fallbackModelName);
@@ -134,30 +131,31 @@ public class MinutesServices : Iminutes
 5. **No Hallucinations**: If information is not in the transcript, use null or empty arrays.
 6. **Action Items**: Every action item MUST have a specific owner (person's name). If no owner is mentioned, use ""Unassigned"".
 7. **JSON Only**: Return ONLY valid JSON. No markdown, no code blocks, no explanations, no backticks.
+8. **Be Concise**: Keep summaries brief but complete. Don't repeat information.
 
 ## OUTPUT SCHEMA:
 {{
-  ""meetingTitle"": ""string or null - The main topic or title of the meeting"",
-  ""meetingDate"": ""string or null - Date in format 'YYYY-MM-DD' if mentioned, otherwise null"",
-  ""attendees"": [""array of strings - Full names of all participants""],
-  ""absentWithApology"": [""array of strings - People who sent apologies""],
-  ""absentWithoutApology"": [""array of strings - People who were expected but absent""],
-  ""meetingSummary"": ""string - A comprehensive 2-3 paragraph summary of the entire meeting"",
+  ""meetingTitle"": ""string or null"",
+  ""meetingDate"": ""string or null (YYYY-MM-DD)"",
+  ""attendees"": [""name1"", ""name2""],
+  ""absentWithApology"": [""name1""],
+  ""absentWithoutApology"": [""name1""],
+  ""meetingSummary"": ""string (2-3 paragraphs max)"",
   ""discussionPoints"": [
     {{
-      ""topic"": ""string - The main topic discussed"",
-      ""summary"": ""string - Detailed summary of the discussion on this topic""
+      ""topic"": ""string"",
+      ""summary"": ""string (concise but complete)""
     }}
   ],
-  ""decisions"": [""array of strings - All decisions made during the meeting""],
+  ""decisions"": [""string""],
   ""actionItems"": [
     {{
-      ""owner"": ""string - Name of the person responsible"",
-      ""task"": ""string - Specific task to be completed"",
-      ""dueDate"": ""string or null - Due date if mentioned, otherwise null""
+      ""owner"": ""string"",
+      ""task"": ""string"",
+      ""dueDate"": ""string or null""
     }}
   ],
-  ""nextMeeting"": ""string or null - Date/time of next meeting if scheduled""
+  ""nextMeeting"": ""string or null""
 }}
 
 ## TRANSCRIPT:
@@ -184,7 +182,8 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
                 temperature = 0.3,
                 topP = 0.8,
                 topK = 40,
-                maxOutputTokens = 8192,
+                // ✅ INCREASED: From 8192 to 65536 for long transcripts
+                maxOutputTokens = 65536,
             }
         };
 
@@ -217,8 +216,10 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             throw new InvalidOperationException("Gemini returned empty response");
         }
 
-        var cleanedJson = CleanJsonResponse(generatedMinutes);
+        // ✅ Clean and attempt to repair truncated JSON
+        var cleanedJson = CleanAndRepairJson(generatedMinutes);
         
+        // Validate it's proper JSON
         try
         {
             JsonDocument.Parse(cleanedJson);
@@ -226,20 +227,22 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "❌ Generated minutes is not valid JSON: {Json}", cleanedJson);
+            _logger.LogError(ex, "❌ Generated minutes is not valid JSON even after repair: {Json}", cleanedJson.Substring(0, Math.Min(500, cleanedJson.Length)));
             throw new InvalidOperationException("Generated minutes is not valid JSON", ex);
         }
 
         return cleanedJson;
     }
 
-    private string CleanJsonResponse(string json)
+    // ✅ NEW: Enhanced JSON cleaning with repair for truncated responses
+    private string CleanAndRepairJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
             return "{}";
 
         json = json.Trim();
 
+        // Remove markdown code blocks
         if (json.StartsWith("```json"))
             json = json.Substring(7);
         else if (json.StartsWith("```"))
@@ -249,8 +252,117 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             json = json.Substring(0, json.Length - 3);
 
         json = json.Trim();
-        json = System.Text.RegularExpressions.Regex.Replace(json, @",\s*([\]}])", @"$1");
 
+        // Remove trailing commas before closing braces/brackets
+        json = Regex.Replace(json, @",\s*([\]}])", @"$1");
+
+        // ✅ NEW: Try to repair truncated JSON
+        json = RepairTruncatedJson(json);
+
+        return json;
+    }
+
+    // ✅ NEW: Attempt to repair JSON that was cut off mid-stream
+    private string RepairTruncatedJson(string json)
+    {
+        // First, try parsing as-is
+        try
+        {
+            JsonDocument.Parse(json);
+            return json; // Already valid
+        }
+        catch
+        {
+            // Need to repair
+        }
+
+        _logger.LogWarning("⚠️ JSON appears truncated. Attempting to repair...");
+
+        // Count open/close braces and brackets
+        int openBraces = 0, closeBraces = 0;
+        int openBrackets = 0, closeBrackets = 0;
+        bool inString = false;
+        bool escaped = false;
+
+        foreach (char c in json)
+        {
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+
+            if (c == '\\' && inString)
+            {
+                escaped = true;
+                continue;
+            }
+
+            if (c == '"')
+            {
+                inString = !inString;
+                continue;
+            }
+
+            if (!inString)
+            {
+                switch (c)
+                {
+                    case '{': openBraces++; break;
+                    case '}': closeBraces++; break;
+                    case '[': openBrackets++; break;
+                    case ']': closeBrackets++; break;
+                }
+            }
+        }
+
+        // If we're in a string, close it
+        if (inString)
+        {
+            json += "\"";
+        }
+
+        // Close any open brackets/braces
+        // We need to close them in reverse order of opening
+        // Simple approach: close brackets first, then braces
+        
+        // If we have unclosed brackets, try to close them
+        while (openBrackets > closeBrackets)
+        {
+            // Try to find the last incomplete array and close it
+            json = json.TrimEnd();
+            if (!json.EndsWith("]") && !json.EndsWith(","))
+            {
+                // Remove trailing partial content
+                int lastComma = json.LastIndexOf(',');
+                int lastOpenBracket = json.LastIndexOf('[');
+                if (lastComma > lastOpenBracket && lastComma > json.LastIndexOf('}'))
+                {
+                    json = json.Substring(0, lastComma);
+                }
+            }
+            json += "]";
+            closeBrackets++;
+        }
+
+        // Close any open braces
+        while (openBraces > closeBraces)
+        {
+            json = json.TrimEnd();
+            if (!json.EndsWith("}") && !json.EndsWith(","))
+            {
+                int lastComma = json.LastIndexOf(',');
+                int lastOpenBrace = json.LastIndexOf('{');
+                if (lastComma > lastOpenBrace && lastComma > json.LastIndexOf(']'))
+                {
+                    json = json.Substring(0, lastComma);
+                }
+            }
+            json += "}";
+            closeBraces++;
+        }
+
+        _logger.LogInformation("✅ JSON repair attempted. Final length: {Length}", json.Length);
         return json;
     }
 
