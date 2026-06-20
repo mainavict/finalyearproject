@@ -27,6 +27,11 @@ public class ResponseMeetingDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class UpdateMinutesRequest
+{
+    public MeetingMinutesData Minutes { get; set; } = null!;
+}
+
 public class CreateMeetingDto
 {
     public string Title { get; set; } = string.Empty;

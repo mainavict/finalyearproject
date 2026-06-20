@@ -162,4 +162,56 @@ public class MinutesControllers : ControllerBase
         var response = await _minutesService.GetAllMinutesAsync();
         return response;
     }
+    
+    [HttpPut("{meetingId}/minutes")]
+    public async Task<IActionResult> UpdateMinutes(Guid meetingId, [FromBody] UpdateMinutesRequest request)
+    {
+        try
+        {
+            var userId = User.GetUserId();
+            
+            var meeting = await _context.Meetings
+                .Include(m => m.Minutes)
+                .FirstOrDefaultAsync(m => m.Id == meetingId && m.CreatorId == userId);
+    
+            if (meeting == null)
+            {
+                return NotFound(ApiResponse<object>.FailureResponse("Meeting not found", 404));
+            }
+    
+            // Serialize the minutes data to JSON
+            var minutesJson = JsonSerializer.Serialize(request.Minutes, new JsonSerializerOptions
+            {
+                WriteIndented = false
+            });
+    
+            if (meeting.Minutes == null)
+            {
+                meeting.Minutes = new Minutes
+                {
+                    MeetingId = meetingId,
+                    DraftJson = minutesJson,
+                    Status = "draft",
+                    LlmModel = "Manual Edit",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.Minutes.Add(meeting.Minutes);
+            }
+            else
+            {
+                meeting.Minutes.DraftJson = minutesJson;
+                meeting.Minutes.UpdatedAt = DateTime.UtcNow;
+            }
+    
+            await _context.SaveChangesAsync();
+    
+            return Ok(ApiResponse<object>.SuccessResponse(null, "Minutes updated successfully", 200));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating minutes for meeting {MeetingId}", meetingId);
+            return StatusCode(500, ApiResponse<object>.FailureResponse("An error occurred", 500));
+        }
+    }
 }
