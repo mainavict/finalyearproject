@@ -76,4 +76,36 @@ public class BackblazeStorage : IStorage
     {
         return _client.DeleteObjectAsync(_bucketName, fileId);
     }
+    
+    
+    
+    public async Task<string> UploadStreamAsync(Stream stream, string fileName, string contentType, string folder)
+    {
+        var safeFileName = Path.GetFileNameWithoutExtension(fileName)
+            .Replace(" ", "_")
+            .Replace("[", "")
+            .Replace("]", "")
+            .Replace("(", "")
+            .Replace(")", "");
+
+        var extension = Path.GetExtension(fileName);
+        var key = $"{folder}/{Guid.NewGuid()}_{safeFileName}{extension}";
+
+        var request = new PutObjectRequest
+        {
+            BucketName = _bucketName,
+            Key = key,
+            InputStream = stream,
+            ContentType = contentType,
+            Headers = { ContentLength = stream.Length }
+        };
+
+        await _client.PutObjectAsync(request);
+        return key;
+    }
+    
+    
+    
+    
+    
 }

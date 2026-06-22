@@ -3,6 +3,7 @@ using finalyearproject.Data;
 using finalyearproject.Services.Implementation;
 using finalyearproject.Services.Interfaces;
 using finalyearproject.Models;
+
 namespace finalyearproject.Workers;
 
 public class TranscriptionWorker : BackgroundService
@@ -28,16 +29,50 @@ public class TranscriptionWorker : BackgroundService
                 
                 var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 var processor = scope.ServiceProvider.GetRequiredService<IAudioProcessingService>();
+                var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
                 
                 var pendingAudio = await context.AudioFiles
-                    .FirstOrDefaultAsync(a => a.Status == stutus.pending , stoppingToken);
-                
+                    .Include(a => a.Meeting)
+                    .FirstOrDefaultAsync(a => a.Status == stutus.pending, stoppingToken);
 
                 if (pendingAudio != null)
                 {
                     _logger.LogInformation("Worker found pending audio: {AudioId}", pendingAudio.Id);
+                    
+                    var userId = pendingAudio.Meeting?.CreatorId ?? Guid.Empty;
                
-                    await processor.ProcessAudioAsync(pendingAudio.Id);
+                    // Send "processing" notification
+                    await notificationService.SendTranscriptionUpdateAsync(
+                        userId,
+                        pendingAudio.MeetingId,
+                        $"Processing audio: {pendingAudio.FileName}",
+                        "prossesing"
+                    );
+
+                    try
+                    {
+                        await processor.ProcessAudioAsync(pendingAudio.Id);
+
+                        // Send "completed" notification
+                        await notificationService.SendTranscriptionUpdateAsync(
+                            userId,
+                            pendingAudio.MeetingId,
+                            "✅ Transcription complete! Meeting minutes are ready.",
+                            "transcribed"
+                        );
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to process audio {AudioId}", pendingAudio.Id);
+                        
+                        // Send "failed" notification
+                        await notificationService.SendTranscriptionUpdateAsync(
+                            userId,
+                            pendingAudio.MeetingId,
+                            $"❌ Transcription failed: {ex.Message}",
+                            "failed"
+                        );
+                    }
                 }
             }
             catch (Exception ex)

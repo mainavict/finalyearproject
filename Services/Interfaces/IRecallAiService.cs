@@ -10,4 +10,7 @@ public interface IRecallAiService
     Task<RecallBotResponse?> CreateBotAsync(RecallBotRequest request, CancellationToken ct = default);
     Task<RecallRecordingMedia?> GetRecordingMediaAsync(string recordingId, CancellationToken ct = default);
     Task<(Stream Stream, string ContentType, string FileName)> DownloadRecordingAudioAsync(string audioUrl, CancellationToken ct = default);
+    Task<List<RecallParticipantEvent>?> GetParticipantEventsAsync(string recordingId, CancellationToken ct = default);
+    Task<string> GetTranscriptAsync(string botId, CancellationToken ct = default);
 }
+

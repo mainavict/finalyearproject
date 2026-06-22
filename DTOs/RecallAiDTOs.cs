@@ -21,6 +21,24 @@ public record RecallRecordingConfig
 {
     [JsonPropertyName("transcript")]
     public RecallTranscriptConfig Transcript { get; init; } = new();
+    
+    // ✅ NEW: Request audio-only output
+    [JsonPropertyName("outputs")]
+    public RecallOutputConfig? Outputs { get; init; } = new();
+}
+
+// ✅ NEW: Output configuration to get audio instead of video
+public record RecallOutputConfig
+{
+    [JsonPropertyName("audio_mixed")]
+    public RecallAudioOutputConfig? AudioMixed { get; init; } = new();
+}
+
+// ✅ NEW: Audio output settings
+public record RecallAudioOutputConfig
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; init; } = true;
 }
 
 public record RecallTranscriptConfig
@@ -29,7 +47,6 @@ public record RecallTranscriptConfig
     public RecallTranscriptProvider Provider { get; init; } = new();
 }
 
-// UPDATED: Use Recall.ai's built-in streaming transcription (works out of the box)
 public record RecallTranscriptProvider
 {
     [JsonPropertyName("recallai_streaming")]
@@ -47,9 +64,7 @@ public record RecallAiStreamingConfig
 
 public record RecallBotResponse(
     [property: JsonPropertyName("id")] string Id,
-
     [property: JsonPropertyName("meeting_url")] object? MeetingUrl = null,
-    
     [property: JsonPropertyName("status_changes")] List<RecallStatusChange>? StatusChanges = null
 );
 
@@ -72,7 +87,9 @@ public record RecallWebhookPayload(
 );
 
 public record RecallWebhookData(
-    [property: JsonPropertyName("bot")] RecallBotData? Bot = null
+    [property: JsonPropertyName("bot")] RecallBotData? Bot = null,
+    [property: JsonPropertyName("recording")] RecallRecordingRef? Recording = null,
+    [property: JsonPropertyName("outputs")] RecallBotOutputs? Outputs = null
 );
 
 public record RecallBotData(
@@ -83,7 +100,8 @@ public record RecallBotData(
 );
 
 public record RecallBotOutputs(
-    [property: JsonPropertyName("recordings")] List<RecallRecordingRef>? Recordings = null
+    [property: JsonPropertyName("recordings")] List<RecallRecordingRef>? Recordings = null,
+    [property: JsonPropertyName("recording")] RecallRecordingRef? Recording = null
 );
 
 public record RecallRecordingRef(
@@ -108,3 +126,22 @@ public record StartMeetingRequest(
     string MeetingUrl,
     Guid InternalMeetingId
 );
+
+
+public class RecallParticipantEvent
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "join", "leave"
+    public DateTime CreatedAt { get; set; }
+    public RecallParticipantInfo? Participant { get; set; }
+    public bool IsHost { get; set; }
+    public DateTime? LeftAt { get; set; }
+    public int? DurationSeconds { get; set; }
+}
+
+public class RecallParticipantInfo
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Label { get; set; } // Name
+    public string? Email { get; set; }
+}

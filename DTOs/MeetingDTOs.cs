@@ -21,10 +21,15 @@ public class ResponseMeetingDto
     public DateTime? EndedAt { get; set; }
 
     public DateTime? ApprovedAt { get; set; }
-
+    public string? MeetingUrl { get; set; }
     public int? AudioDurationSecs { get; set; }
 
     public DateTime CreatedAt { get; set; }
+}
+
+public class UpdateMinutesRequest
+{
+    public MeetingMinutesData Minutes { get; set; } = null!;
 }
 
 public class CreateMeetingDto
@@ -34,6 +39,9 @@ public class CreateMeetingDto
     public string? Description { get; set; }
 
     public DateTime? ScheduledAt { get; set; }
+    
+    public string? MeetingUrl { get; set; }
+    public bool DeployBot { get; set; } = false;
 
 }
 
@@ -41,11 +49,12 @@ public class CreateMeetingDto
 
 public class UpdateMeetingDto
     {
-        public string? Title { get; set; }
-
+        public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-
         public DateTime? ScheduledAt { get; set; }
+    
+        public string? MeetingUrl { get; set; }
+        public bool DeployBot { get; set; } = false;
     }
 
 

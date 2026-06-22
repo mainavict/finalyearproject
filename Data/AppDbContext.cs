@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
         : base(options) { }
 
     // ── DbSets ────────────────────────────────────────────────────────────
+    public DbSet<Participant> Participants { get; set; }
     public DbSet<User>             Users             { get; set; }
     public DbSet<Meeting>          Meetings          { get; set; }
     public DbSet<AudioFile>        AudioFiles        { get; set; }
@@ -43,6 +44,17 @@ public class AppDbContext : DbContext
 
         b.Entity<Meeting>()
             .HasIndex(m => new { m.CreatorId, m.Status });
+        
+        b.Entity<Participant>(entity =>
+        {
+            entity.HasOne(p => p.Meeting)
+                .WithMany(m => m.Participants)
+                .HasForeignKey(p => p.MeetingId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasIndex(p => new { p.MeetingId, p.Email });
+            entity.HasIndex(p => p.Email);
+        });
 
         // ── AUDIO FILE ────────────────────────────────────────────────────
         b.Entity<AudioFile>()

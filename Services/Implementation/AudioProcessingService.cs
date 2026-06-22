@@ -137,6 +137,10 @@ public class AudioProcessingService : IAudioProcessingService
                     message = "Your meeting minutes are ready to view!"
                 });
                 
+                meeting.Status = MeetingStatus.Completed;
+                await _context.SaveChangesAsync();
+                
+                
                 _logger.LogInformation("Sent real-time notification to user {UserId}", userId);
             }
         }
