@@ -41,7 +41,8 @@ namespace finalyearproject.Migrations
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     PasswordHash = table.Column<string>(type: "text", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    ClerkUserId = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -58,6 +59,7 @@ namespace finalyearproject.Migrations
                     Title = table.Column<string>(type: "text", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     Status = table.Column<string>(type: "text", nullable: false),
+                    MeetingUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     AudioUrl = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                     AudioDurationSecs = table.Column<int>(type: "integer", nullable: true),
                     AudioMimeType = table.Column<string>(type: "text", nullable: true),
@@ -168,6 +170,32 @@ namespace finalyearproject.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Participants",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    MeetingId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Email = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
+                    Role = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    IsHost = table.Column<bool>(type: "boolean", nullable: false),
+                    JoinedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LeftAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DurationSeconds = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Participants", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Participants_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Transcripts",
                 columns: table => new
                 {
@@ -274,6 +302,16 @@ namespace finalyearproject.Migrations
                 columns: new[] { "MinutesId", "VersionNumber" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Participants_Email",
+                table: "Participants",
+                column: "Email");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Participants_MeetingId_Email",
+                table: "Participants",
+                columns: new[] { "MeetingId", "Email" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Transcripts_MeetingId",
                 table: "Transcripts",
                 column: "MeetingId",
@@ -300,6 +338,9 @@ namespace finalyearproject.Migrations
 
             migrationBuilder.DropTable(
                 name: "MinutesVersions");
+
+            migrationBuilder.DropTable(
+                name: "Participants");
 
             migrationBuilder.DropTable(
                 name: "Transcripts");

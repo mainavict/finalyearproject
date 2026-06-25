@@ -13,8 +13,8 @@ using finalyearproject.Data;
 namespace finalyearproject.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260617112357_AddParticipantsTable")]
-    partial class AddParticipantsTable
+    [Migration("20260624123908_initial1")]
+    partial class initial1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -404,6 +404,9 @@ namespace finalyearproject.Migrations
                     b.Property<Guid>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ClerkUserId")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

@@ -13,8 +13,8 @@ using finalyearproject.Data;
 namespace finalyearproject.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260611114234_AddMeetingUrl")]
-    partial class AddMeetingUrl
+    [Migration("20260623194003_initial")]
+    partial class initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -317,6 +317,52 @@ namespace finalyearproject.Migrations
                     b.ToTable("MinutesVersions");
                 });
 
+            modelBuilder.Entity("finalyearproject.Models.Participant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("IsHost")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LeftAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MeetingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("MeetingId", "Email");
+
+                    b.ToTable("Participants");
+                });
+
             modelBuilder.Entity("finalyearproject.Models.Transcript", b =>
                 {
                     b.Property<Guid>("Id")
@@ -358,6 +404,9 @@ namespace finalyearproject.Migrations
                     b.Property<Guid>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ClerkUserId")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -457,6 +506,17 @@ namespace finalyearproject.Migrations
                     b.Navigation("Minutes");
                 });
 
+            modelBuilder.Entity("finalyearproject.Models.Participant", b =>
+                {
+                    b.HasOne("finalyearproject.Models.Meeting", "Meeting")
+                        .WithMany("Participants")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+                });
+
             modelBuilder.Entity("finalyearproject.Models.Transcript", b =>
                 {
                     b.HasOne("finalyearproject.Models.Meeting", "Meeting")
@@ -473,6 +533,8 @@ namespace finalyearproject.Migrations
                     b.Navigation("AudioFiles");
 
                     b.Navigation("Minutes");
+
+                    b.Navigation("Participants");
 
                     b.Navigation("Transcript");
                 });

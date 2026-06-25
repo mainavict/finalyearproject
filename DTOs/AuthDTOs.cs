@@ -1,5 +1,11 @@
 namespace finalyearproject.DTOs;
 
+public class SyncClerkUserRequest
+{
+    public string ClerkUserId { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+}
 
    
 public class RegisterDto

@@ -385,16 +385,18 @@ Now analyze the transcript and generate the meeting minutes as JSON:";
             statusCode: 200);
     }
 
-    public async Task<ApiResponse<List<Minutes>>> GetAllMinutesAsync()
+    public async Task<ApiResponse<List<Minutes>>> GetAllMinutesAsync(Guid userid)
     {
+        
         var minutesList = await _context.Minutes
             .Include(m => m.Meeting)
+            .Where(m => m.Meeting.CreatorId == userid) 
             .OrderByDescending(m => m.CreatedAt)
             .ToListAsync();
-            
+        
         return ApiResponse<List<Minutes>>.SuccessResponse(
             minutesList, 
-            "All minutes retrieved successfully.", 
+            "Minutes retrieved successfully.", 
             statusCode: 200);
     }
 }
