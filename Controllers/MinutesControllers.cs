@@ -159,7 +159,8 @@ public class MinutesControllers : ControllerBase
     [HttpGet("all")]
     public async Task<ApiResponse<List<Minutes>>> GetAllMinutes()
     {
-        var response = await _minutesService.GetAllMinutesAsync();
+        Guid currentUserId = User.GetUserId(); 
+        var response = await _minutesService.GetAllMinutesAsync(currentUserId);
         return response;
     }
     
