@@ -80,7 +80,7 @@ public class MinutesControllers : ControllerBase
         }
     }
 
-    // ✅ NEW: Get full meeting data with parsed minutes
+    
     [HttpGet("{meetingId}")]
     public async Task<IActionResult> GetMeetingMinutes(Guid meetingId)
     {
