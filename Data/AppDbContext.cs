@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using finalyearproject.Models;
 using NpgsqlTypes;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace finalyearproject.Data;
 
@@ -8,6 +9,14 @@ public class AppDbContext : DbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options) { }
+    
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // This tells EF Core to ignore the strict PendingModelChangesWarning
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+    }
 
     // ── DbSets ────────────────────────────────────────────────────────────
     public DbSet<Participant> Participants { get; set; }
@@ -21,10 +30,26 @@ public class AppDbContext : DbContext
     public DbSet<EmailDeliveryLog> EmailDeliveryLogs { get; set; }
     public DbSet<EmailOtp>         EmailOtps         { get; set; }
     public DbSet<Payment> Payments { get; set; }
+    public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
         
+        
+        // ── SUBSCRIPTION PLANS ──────────────────────────────────────────
+        b.Entity<SubscriptionPlan>(entity =>
+        {
+            entity.ToTable("\"SubscriptionPlans\"");
+            entity.HasIndex(e => e.PlanCode).IsUnique();
+            
+            // ✅ Seed the database with your pricing plans
+            entity.HasData(
+                new SubscriptionPlan { Id = 1, PlanCode = "trial", DisplayName = "Free Trial", Description = "10 minutes to get started", PriceKSH = 0, IncludedMinutes = 10, DurationDays = 30, IsActive = true },
+                new SubscriptionPlan { Id = 2, PlanCode = "payg_50", DisplayName = "Pay-As-You-Go", Description = "Instant top-up: 30 minutes", PriceKSH = 50, IncludedMinutes = 30, DurationDays = 0, IsActive = true },
+                new SubscriptionPlan { Id = 3, PlanCode = "pro", DisplayName = "Pro Plan", Description = "200 minutes per month", PriceKSH = 300, IncludedMinutes = 200, DurationDays = 30, IsActive = true },
+                new SubscriptionPlan { Id = 4, PlanCode = "ultra_pro", DisplayName = "Ultra Pro", Description = "600 minutes per month", PriceKSH = 800, IncludedMinutes = 600, DurationDays = 30, IsActive = true }
+            );
+        });
         
         
         // ── PAYMENT ─────────────────────────────────────────────────────
