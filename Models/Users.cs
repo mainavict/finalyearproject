@@ -23,5 +23,16 @@ public class User
     // ✅ NEW: Clerk User ID (nullable for migration)
     public string? ClerkUserId { get; set; }
     
+    
+    public string SubscriptionTier { get; set; } = "trial"; // "trial", "pro", "ultra_pro"
+    
+    public DateTime? SubscriptionExpiryDate { get; set; }
+    
+    public int MonthlyMinuteLimit { get; set; } = 10; // 10 mins for trial
+    
+    public int MinutesUsedThisMonth { get; set; } = 0;
+    
+    
+    public ICollection<Payment>? Payments { get; set; }
     public ICollection<Meeting> Meetings { get; set; } = new List<Meeting>();
 }

@@ -20,10 +20,31 @@ public class AppDbContext : DbContext
   
     public DbSet<EmailDeliveryLog> EmailDeliveryLogs { get; set; }
     public DbSet<EmailOtp>         EmailOtps         { get; set; }
-
+    public DbSet<Payment> Payments { get; set; }
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        
+        
+        
+        // ── PAYMENT ─────────────────────────────────────────────────────
+        b.Entity<Payment>(entity =>
+        {
+            entity.ToTable("\"Payments\"");
+            
+            // ✅ Store PaymentStatus enum as string in database
+            entity.Property(e => e.Status)
+                .HasConversion<string>();
+                  
+            entity.HasIndex(e => e.CheckoutRequestID).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            
+            // Relationship with User
+            entity.HasOne(p => p.User)
+                .WithMany(u => u.Payments)
+                .HasForeignKey(p => p.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // ── USER ─────────────────────────────────────────────────────────
         b.Entity<User>()

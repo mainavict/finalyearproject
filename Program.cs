@@ -154,7 +154,7 @@ builder.Services.AddScoped<IParticipantService, ParticipantService>();
 builder.Services.AddHttpClient<Iminutes, MinutesServices>();
 builder.Services.AddHttpClient<IBackblazeB2Service, BackblazeB2Service>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-
+builder.Services.AddHttpClient<IDarajaService, DarajaService>();
 builder.Services.AddHealthChecks();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────

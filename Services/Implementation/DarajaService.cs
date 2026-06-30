@@ -58,7 +58,7 @@ public class DarajaService : IDarajaService
         var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
         var password = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{shortcode}{passkey}{timestamp}"));
 
-        // Format phone number (Ensure it starts with 254 and has no '+' or '0' at the start)
+        // Format phone number (Ensure it starts with 254)
         var phoneNumber = request.PhoneNumber.Trim();
         if (phoneNumber.StartsWith("+")) phoneNumber = phoneNumber.Substring(1);
         if (phoneNumber.StartsWith("0")) phoneNumber = "254" + phoneNumber.Substring(1);
@@ -75,8 +75,8 @@ public class DarajaService : IDarajaService
             PartyB = shortcode,
             PhoneNumber = phoneNumber,
             CallBackURL = callbackUrl,
-            AccountReference = "MeetingApp",
-            TransactionDesc = "Subscription Payment"
+            AccountReference = request.UserId, // Pass UserId as AccountReference
+            TransactionDesc = $"MeetingApp {request.PlanType} Subscription"
         };
 
         var json = JsonSerializer.Serialize(payload);

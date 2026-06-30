@@ -4,7 +4,9 @@ namespace finalyearproject.DTOs;
 public class StkPushRequestDto
 {
     public string PhoneNumber { get; set; } = string.Empty; // e.g., 254708374149
-    public string Amount { get; set; } = string.Empty;      // e.g., "100"
+    public string Amount { get; set; } = string.Empty;      // e.g., "50", "300", "800"
+    public string UserId { get; set; } = string.Empty;      // ✅ NEW: User's GUID
+    public string PlanType { get; set; } = string.Empty;    // ✅ NEW: "payg_50", "pro", "ultra_pro"
 }
 
 // What Daraja sends back when you trigger the STK Push
