@@ -128,6 +128,7 @@ builder.Services.AddScoped<IStorage, BackblazeStorage>();
 builder.Services.AddScoped<IAudioProcessingService, AudioProcessingService>();
 builder.Services.AddHostedService<finalyearproject.Workers.TranscriptionWorker>();
 builder.Services.AddHostedService<finalyearproject.Workers.MeetingSchedulerWorker>();
+builder.Services.AddScoped<IDarajaService, DarajaService>();
 // ── HTTP Clients ─────────────────────────────────────────────────────────────
 builder.Services.AddHttpClient<IRecallAiService, RecallAiService>(client =>
 {
