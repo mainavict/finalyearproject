@@ -7,7 +7,7 @@ using finalyearproject.Models;
 using finalyearproject.Services.Interfaces;
 using System.Security.Claims;
 using System.Text.Json;
-
+using System.Linq;
 namespace finalyearproject.Controllers;
 
 [ApiController]
@@ -31,19 +31,36 @@ public class DarajaController : ControllerBase
     {
         try
         {
+            // ✅ SECURITY STEP 1: Fetch the plan from the database (Source of Truth)
+            var plan = await _context.SubscriptionPlans
+                .FirstOrDefaultAsync(p => p.PlanCode == request.PlanType && p.IsActive);
+
+            if (plan == null)
+            {
+                return BadRequest(new { error = "Invalid or inactive subscription plan." });
+            }
+
+            // ✅ SECURITY STEP 2: Use the database price, IGNORE the frontend price
+            var officialPrice = plan.PriceKSH;
+
+            // 1. Create payment record with the OFFICIAL price
             var payment = new Payment
             {
                 CheckoutRequestID = "TEMP_" + Guid.NewGuid().ToString("N")[..8],
                 UserId = Guid.Parse(request.UserId),
                 PlanType = request.PlanType,
-                Amount = int.Parse(request.Amount),
+                Amount = officialPrice, // <--- Hardcoded from DB, not the frontend!
                 Status = PaymentStatus.Pending
             };
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
 
+            // 2. Call Daraja API using the OFFICIAL price
+            // We temporarily override the request amount for the Daraja service call
+            request.Amount = officialPrice.ToString(); 
             var result = await _darajaService.InitiateStkPushAsync(request);
 
+            // 3. Update with real CheckoutRequestID from Daraja
             if (result.ResponseCode == "0")
             {
                 payment.CheckoutRequestID = result.CheckoutRequestID;
@@ -54,6 +71,7 @@ public class DarajaController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, " STK Push failed");
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -75,13 +93,29 @@ public class DarajaController : ControllerBase
                 {
                     if (resultCode == 0) // Success
                     {
+                        // ✅ SECURITY STEP 3: Validate the actual amount paid in the callback
+                        var metadata = stkCallback.GetProperty("CallbackMetadata").GetProperty("Item");
+                        var actualAmountPaid = metadata
+                            .EnumerateArray()                              
+                            .First(x => x.GetProperty("Name").GetString() == "Amount")
+                            .GetProperty("Value").GetDecimal();
+
+                        // Compare actual amount with expected amount
+                        if (actualAmountPaid != payment.Amount)
+                        {
+                            _logger.LogWarning("️ AMOUNT MISMATCH! Expected: {Expected}, Got: {Actual}", payment.Amount, actualAmountPaid);
+                            payment.Status = PaymentStatus.Failed;
+                            await _context.SaveChangesAsync();
+                            return Ok(new { ResultCode = 0, ResultDesc = "Accepted" }); // Still return 0 to Daraja
+                        }
+
+                        // ✅ Amount matches! Proceed to upgrade user
                         payment.Status = PaymentStatus.Completed;
                         payment.CompletedAt = DateTime.UtcNow;
 
                         var user = await _context.Users.FindAsync(payment.UserId);
                         if (user != null)
                         {
-                            // ✅ DYNAMIC PRICING: Fetch plan from database
                             var plan = await _context.SubscriptionPlans
                                 .FirstOrDefaultAsync(p => p.PlanCode == payment.PlanType && p.IsActive);
 
@@ -92,17 +126,13 @@ public class DarajaController : ControllerBase
                                     user.SubscriptionTier = plan.PlanCode;
                                     user.MonthlyMinuteLimit = plan.IncludedMinutes;
                                     user.SubscriptionExpiryDate = DateTime.UtcNow.AddDays(plan.DurationDays);
-                                    user.MinutesUsedThisMonth = 0; // Reset usage
+                                    user.MinutesUsedThisMonth = 0;
                                 }
                                 else // Top-Up
                                 {
                                     user.MonthlyMinuteLimit += plan.IncludedMinutes;
                                 }
                                 _logger.LogInformation("✅ Applied plan {Plan} for {Email}", plan.DisplayName, user.Email);
-                            }
-                            else
-                            {
-                                _logger.LogError("❌ Plan not found for code: {PlanType}", payment.PlanType);
                             }
                         }
                     }
@@ -155,7 +185,6 @@ public class DarajaController : ControllerBase
         return Ok(payments);
     }
 
-    // ✅ NEW ENDPOINT: Fetch plans for the frontend
     [HttpGet("plans")]
     public async Task<IActionResult> GetPlans()
     {
