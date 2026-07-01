@@ -1,8 +1,16 @@
 # AI Meeting Minutes Assistant — Backend
 
+![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker&logoColor=white)
+![SignalR](https://img.shields.io/badge/SignalR-Real--Time-orange?logo=microsoft&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Render%20%7C%20Docker-lightgrey)
+
 > **ASP.NET Core 9 · PostgreSQL (Supabase) · Backblaze B2 · Recall.ai · AssemblyAI · Google Gemini · SignalR**
 
 This is the complete backend for an AI-powered meeting assistant. It automatically joins online meetings via a bot, records the audio, transcribes the speech, and generates professional structured meeting minutes — all without any manual intervention after the initial meeting is scheduled.
+
+> **⚠️ Security Notice:** `appsettings.json` must **never** be committed with real credentials. Always use `appsettings.Development.json` (git-ignored) for local secrets, and inject production secrets via environment variables or a secrets manager. See [Section 12](#12-configuration-reference) for the full reference.
 
 ---
 
@@ -22,6 +30,9 @@ This is the complete backend for an AI-powered meeting assistant. It automatical
 12. [Configuration Reference](#12-configuration-reference)
 13. [Running Locally](#13-running-locally)
 14. [Deploying with Docker](#14-deploying-with-docker)
+15. [Troubleshooting](#15-troubleshooting)
+16. [Contributing](#16-contributing)
+17. [License](#17-license)
 
 ---
 
@@ -72,7 +83,7 @@ This is the complete backend for an AI-powered meeting assistant. It automatical
 | **Runtime** | .NET / ASP.NET Core | 9.0 | Web API host |
 | **Database ORM** | Entity Framework Core + Npgsql | 9.0 | PostgreSQL access |
 | **Database** | PostgreSQL (Supabase) | — | Persistent storage |
-| **Authentication** | JWT ****** | — | Stateless auth |
+| **Authentication** | JWT Bearer | — | Stateless auth |
 | **Real-time** | ASP.NET Core SignalR | 9.0 | Live push notifications |
 | **API Docs** | Scalar (OpenAPI) | 2.x | Interactive API explorer |
 | **Audio Storage** | Backblaze B2 (S3-compatible) | — | Audio file blob store |
@@ -158,9 +169,12 @@ finalyearproject/
 │
 ├── Migrations/                   # EF Core auto-generated migration files
 ├── Program.cs                    # Application startup, DI registration, middleware pipeline
-├── appsettings.json              # Configuration (connection strings, API keys, JWT)
+├── appsettings.json              # Configuration template (use appsettings.Development.json for local secrets)
 ├── Dockerfile                    # Production container definition
-└── finalyearproject.csproj       # .NET project file & NuGet dependencies
+├── finalyearproject.csproj       # .NET project file & NuGet dependencies
+└── docs/                         # Supplementary documentation
+    ├── AI_Minutes_V1_API_Reference.pdf
+    └── AI_Minutes_V1_Database_Schema.pdf
 ```
 
 ---
@@ -335,7 +349,7 @@ Participants
 
 ## 5. Authentication & Security
 
-### 5.1 JWT ******
+### 5.1 JWT Bearer Authentication
 
 All protected endpoints require a valid JWT in one of two places (checked in order):
 
@@ -1068,7 +1082,7 @@ All configuration is in `appsettings.json`. **Replace every placeholder value be
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=<supabase-host>;Database=postgres;Username=<user>;******;SSL Mode=Require;Trust Server Certificate=true"
+    "DefaultConnection": "Host=<supabase-host>;Database=postgres;Username=<user>;Password=<your-password>;SSL Mode=Require;Trust Server Certificate=true"
   },
 
   "JwtSettings": {
@@ -1130,15 +1144,42 @@ Enable these event types:
 
 Copy the **Signing Secret** from the dashboard and set it as `RecallAi:WebhookSecret` in your configuration (must start with `whsec_`).
 
+### Environment Variables Quick-Reference
+
+For container or CI/CD deployments, all `appsettings.json` keys can be overridden with environment variables using ASP.NET Core's double-underscore (`__`) separator convention:
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
+| `JwtSettings__SecretKey` | HS256 signing secret (min. 32 chars) |
+| `JwtSettings__Issuer` | Token issuer (default: `MeetingAssistantAPI`) |
+| `JwtSettings__Audience` | Token audience (default: `MeetingAssistantClient`) |
+| `JwtSettings__ExpiryInMinutes` | Token lifetime in minutes (default: `60`) |
+| `BackblazeB2__ApplicationKeyId` | Backblaze B2 application key ID |
+| `BackblazeB2__ApplicationKey` | Backblaze B2 application key |
+| `BackblazeB2__BucketId` | Backblaze B2 bucket ID |
+| `BackblazeB2__BucketName` | Backblaze B2 bucket name |
+| `BackblazeB2__Endpoint` | Backblaze B2 S3-compatible endpoint |
+| `RecallAi__ApiKey` | Recall.ai API key |
+| `RecallAi__BaseUrl` | Recall.ai API base URL |
+| `RecallAi__WebhookSecret` | Webhook HMAC signing secret (`whsec_…`) |
+| `AssemblyAI__ApiKey` | AssemblyAI API key |
+| `GeminiApi__ApiKey` | Google Gemini API key |
+| `GeminiApi__Url` | Gemini primary endpoint |
+| `GeminiApi__FallbackUrl` | Gemini fallback endpoint |
+
 ---
 
 ## 13. Running Locally
 
 ### Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download)
-- PostgreSQL (or a free [Supabase](https://supabase.com) project)
-- (Optional) [ngrok](https://ngrok.com) to expose your local API to Recall.ai webhooks
+| Tool | Version | Notes |
+|------|---------|-------|
+| [.NET SDK](https://dotnet.microsoft.com/download) | 9.0+ | Required |
+| [PostgreSQL](https://www.postgresql.org/download/) | 14+ | Or a free [Supabase](https://supabase.com) project |
+| [EF Core CLI](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) | — | `dotnet tool install --global dotnet-ef` |
+| [ngrok](https://ngrok.com) | — | Optional — required to receive Recall.ai webhooks locally |
 
 ### Steps
 
@@ -1202,3 +1243,93 @@ The health check endpoint `/health` can be used as the Docker/Kubernetes livenes
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/health || exit 1
 ```
+
+---
+
+## 15. Troubleshooting
+
+### Bot does not join the meeting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `RecallBotId` is still `null` after `ScheduledAt` | `MeetingSchedulerWorker` has not triggered | Verify `Meeting.Status = Scheduled` and `MeetingUrl` is set. Check application logs for "Deploying bot for meeting" messages. |
+| Bot joins but no audio is stored | Recall.ai `recording.done` webhook was not received | Confirm the webhook URL is registered in the Recall.ai dashboard and that your server is publicly accessible (use ngrok locally). Check `RecallAi:WebhookSecret` matches exactly. |
+| `401 Unauthorized` on webhook | HMAC signature mismatch | Ensure `RecallAi:WebhookSecret` starts with `whsec_` and matches the secret shown in the Recall.ai dashboard. |
+
+---
+
+### Transcription never completes
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `AudioFile.Status` stays `pending` | `TranscriptionWorker` is not running | Check that `TranscriptionWorker` is registered in `Program.cs` and that no startup exception was thrown. |
+| `AudioFile.Status` is `failed` | AssemblyAI or Gemini API error | Check application logs for `AudioProcessingService` error messages. Verify API keys are valid and have sufficient quota. |
+| Minutes generation fails with `429` | Gemini rate limit exceeded | The worker automatically reverts the file to `pending` and retries. If persistent, check your Gemini API quota in Google Cloud Console. |
+
+---
+
+### Database / EF Core issues
+
+```bash
+# Check connection string format (Supabase pooler)
+Host=<region>.pooler.supabase.com;Database=postgres;Username=postgres.<project-ref>;Password=<your-password>;SSL Mode=Require;Trust Server Certificate=true
+
+# Apply pending migrations
+dotnet ef database update
+
+# Re-generate migrations from scratch (destructive — dev only)
+dotnet ef migrations remove
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
+
+---
+
+### JWT authentication errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `401` on every request | JWT secret mismatch | Ensure `JwtSettings:SecretKey` is identical across all environments and is at least 32 characters long. |
+| `401` only in production | Cookie not sent cross-origin | Verify the frontend origin is listed in the CORS policy and that `AllowCredentials()` is enabled. |
+| SignalR connection drops immediately | JWT not passed as query string | Frontend must connect with `?access_token=<jwt>` — WebSockets cannot send custom headers. |
+
+---
+
+## 16. Contributing
+
+This project is a final year university project. Contributions, suggestions, and bug reports are welcome.
+
+1. **Fork** the repository and create a feature branch: `git checkout -b feature/your-feature-name`
+2. **Make your changes** — follow the existing coding style (controllers delegate to services, services implement interfaces).
+3. **Test locally** — run `dotnet run` and verify the Scalar API explorer at `/scalar/v1`.
+4. **Keep secrets out of source control** — never commit `appsettings.json` with real credentials.
+5. **Open a Pull Request** with a clear description of the change and the problem it solves.
+
+### Code style guidelines
+
+- Controllers should be thin — all business logic lives in the `Services/Implementation` layer.
+- Every new service must have a corresponding interface in `Services/Interfaces`.
+- Use the `ApiResponse<T>` wrapper for all controller responses.
+- Background tasks that must not block a request should use `_ = Task.Run(async () => { ... })` with appropriate error handling.
+
+---
+
+## 17. License
+
+This project was developed as a final year undergraduate project. All rights reserved by the author.
+
+Third-party services and libraries used in this project are subject to their own licences:
+
+| Dependency | Licence |
+|-----------|---------|
+| ASP.NET Core | MIT |
+| Entity Framework Core | MIT |
+| BCrypt.Net-Next | MIT |
+| Polly | BSD-3-Clause |
+| AWSSDK.S3 | Apache-2.0 |
+| AssemblyAI SDK | MIT |
+| Scalar.AspNetCore | MIT |
+
+---
+
+*Built with ❤️ using ASP.NET Core 9 — Final Year Project*
