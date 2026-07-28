@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "dgSpecHash": "VToG/Xmrn24=",
-  "success": false,
+  "dgSpecHash": "hmQAmoqB/lo=",
+  "success": true,
   "projectFilePath": "C:\\Users\\victor\\Developent\\finalyearproject\\finalyearproject.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\victor\\.nuget\\packages\\assemblyai\\1.2.2\\assemblyai.1.2.2.nupkg.sha512",
@@ -46,7 +46,7 @@
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\8.0.0\\microsoft.extensions.options.configurationextensions.8.0.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.extensions.primitives\\10.0.3\\microsoft.extensions.primitives.10.0.3.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.19.2\\microsoft.identitymodel.abstractions.8.19.2.nupkg.sha512",
-    "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.19.1\\microsoft.identitymodel.jsonwebtokens.8.19.1.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.19.2\\microsoft.identitymodel.jsonwebtokens.8.19.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.logging\\8.19.2\\microsoft.identitymodel.logging.8.19.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.protocols\\8.19.2\\microsoft.identitymodel.protocols.8.19.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.identitymodel.protocols.openidconnect\\8.19.2\\microsoft.identitymodel.protocols.openidconnect.8.19.2.nupkg.sha512",
@@ -104,7 +104,7 @@
     "C:\\Users\\victor\\.nuget\\packages\\system.globalization\\4.3.0\\system.globalization.4.3.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\system.globalization.calendars\\4.3.0\\system.globalization.calendars.4.3.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\system.globalization.extensions\\4.3.0\\system.globalization.extensions.4.3.0.nupkg.sha512",
-    "C:\\Users\\victor\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.19.1\\system.identitymodel.tokens.jwt.8.19.1.nupkg.sha512",
+    "C:\\Users\\victor\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.19.2\\system.identitymodel.tokens.jwt.8.19.2.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\system.io\\4.3.0\\system.io.4.3.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\system.io.compression\\4.3.0\\system.io.compression.4.3.0.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\system.io.compression.zipfile\\4.3.0\\system.io.compression.zipfile.4.3.0.nupkg.sha512",
@@ -162,17 +162,5 @@
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.17\\microsoft.aspnetcore.app.ref.9.0.17.nupkg.sha512",
     "C:\\Users\\victor\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.17\\microsoft.netcore.app.host.win-x64.9.0.17.nupkg.sha512"
   ],
-  "logs": [
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: System.IdentityModel.Tokens.Jwt from 8.19.2 to 8.19.1. Reference the package directly from the project to select a different version. \r\n finalyearproject -> Microsoft.AspNetCore.Authentication.JwtBearer 9.0.18 -> Microsoft.IdentityModel.Protocols.OpenIdConnect 8.19.2 -> System.IdentityModel.Tokens.Jwt (>= 8.19.2) \r\n finalyearproject -> System.IdentityModel.Tokens.Jwt (>= 8.19.1)",
-      "projectPath": "C:\\Users\\victor\\Developent\\finalyearproject\\finalyearproject.csproj",
-      "filePath": "C:\\Users\\victor\\Developent\\finalyearproject\\finalyearproject.csproj",
-      "libraryId": "System.IdentityModel.Tokens.Jwt",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    }
-  ]
+  "logs": []
 }

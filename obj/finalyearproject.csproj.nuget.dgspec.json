@@ -94,7 +94,7 @@
             },
             "System.IdentityModel.Tokens.Jwt": {
               "target": "Package",
-              "version": "[8.19.1, )"
+              "version": "[8.19.2, )"
             },
             "Whisper.net": {
               "target": "Package",
