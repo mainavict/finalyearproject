@@ -194,7 +194,7 @@ public class MeetingSchedulerWorker : BackgroundService
         var botRequest = new RecallBotRequest
         {
             MeetingUrl = meeting.MeetingUrl!,
-            BotName = "MeetingMind",
+            BotName = "Mintra",
             RecordingConfig = new RecallRecordingConfig
             {
                 Transcript = new RecallTranscriptConfig
